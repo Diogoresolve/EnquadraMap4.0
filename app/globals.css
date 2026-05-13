@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@media print {
+
+  /* Hide non-essential UI elements */
+  header,
+  form,
+  button:not(.print-visible),
+  .confirmation-modal,
+  .voice-controls {
+    display: none !important;
+  }
+
+  /* Reset layout for paper */
+  body,
+  main {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Map Container - Top Half */
+  .relative.flex-1 {
+    height: 50vh !important;
+    width: 100% !important;
+    position: relative !important;
+    border: 2px solid #ccc;
+  }
+
+  /* History List - Bottom Half */
+  .absolute.top-20.right-6 {
+    position: static !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin-top: 20px;
+    display: block !important;
+  }
+
+  /* Cards Styling for Print */
+  .backdrop-blur-md {
+    backdrop-filter: none !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    color: black !important;
+    box-shadow: none !important;
+    margin-bottom: 10px;
+  }
+
+  /* Text Colors for Print */
+  .text-white,
+  .text-gray-200,
+  .text-gray-300,
+  .text-gray-400 {
+    color: black !important;
+  }
+
+  /* Hide scrollbars */
+  * {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
