@@ -11,6 +11,26 @@ import { PrintReport } from '../components/PrintReport';
 
 const LIBRARIES: ("places" | "geometry" | "drawing" | "visualization")[] = ["places", "drawing", "geometry"];
 
+// ─── Filtro de escolas públicas ───────────────────────────────────────────────
+// IDs dos itens de educação que devem exibir somente escolas/creches públicas
+const EDUCATION_PUBLIC_IDS = new Set(['school_creche', 'school_fund1', 'school_fund2']);
+
+// Siglas e padrões de nome de escolas públicas brasileiras
+const PUBLIC_SCHOOL_PATTERNS = [
+  'EMEI', 'EMEF', 'EMEB', 'EMEIF', 'EMEJA',
+  'CMEI', 'CEI', 'CEU', 'CEJA',
+  'E.E.', 'E. E.',
+  'ESCOLA ESTADUAL', 'ESCOLA MUNICIPAL',
+  'CRECHE MUNICIPAL', 'CRECHE PÚBLICA', 'CRECHE PUBLICA',
+  'ESCOLA PÚBLICA', 'ESCOLA PUBLICA',
+  'MUNICIPAL DE EDUCA', 'ESTADUAL DE EDUCA',
+];
+
+const isPublicSchool = (name: string): boolean => {
+  const upper = name.toUpperCase();
+  return PUBLIC_SCHOOL_PATTERNS.some(p => upper.includes(p));
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LatLng = { lat: number; lng: number };
 
@@ -62,8 +82,10 @@ export default function Home() {
   // ── Confirmation modal ──────────────────────────────────────────────────
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
 
-  // ── Print Report ────────────────────────────────────────────────────────
+  // ── Print Report ──────────────────────────────────────────────────
   const [showReport, setShowReport] = useState(false);
+  // Coordenadas de cada item verificado (para exportar KML)
+  const [checkLocations, setCheckLocations] = useState<Record<string, LatLng>>({});
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -140,6 +162,7 @@ export default function Home() {
       return [...filtered, newRoute];
     });
     setActiveRouteId(newRoute.id);
+    setCheckLocations(prev => ({ ...prev, [checkItem.id]: targetLocation }));
     setActiveCheckId(null);
     setSuggestions([]);
     setTextInput('');
@@ -162,17 +185,33 @@ export default function Home() {
       radius: checkItem.maxDistanceWalk || 2000,
     };
 
+    // Timeout de segurança: garante que o spinner sempre some
+    const searchTimeout = setTimeout(() => setIsSearching(false), 10_000);
+
     service.textSearch(request, (results, status) => {
+      clearTimeout(searchTimeout);
       setIsSearching(false);
+
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const top3: PlaceSuggestion[] = results.slice(0, 3).map(p => ({
-          name: p.name || 'Local',
-          address: p.vicinity || p.formatted_address || '',
-          location: {
-            lat: p.geometry!.location!.lat(),
-            lng: p.geometry!.location!.lng(),
-          }
-        }));
+        // Para itens de educação, filtra para mostrar somente escolas/creches públicas
+        let filtered = results;
+        if (EDUCATION_PUBLIC_IDS.has(checkItem.id)) {
+          const publicOnly = results.filter(p => isPublicSchool(p.name || ''));
+          if (publicOnly.length > 0) filtered = publicOnly;
+        }
+
+        // Guarda contra resultados sem geometria (evita crash)
+        const top3: PlaceSuggestion[] = filtered
+          .filter(p => p.geometry?.location != null)
+          .slice(0, 3)
+          .map(p => ({
+            name: p.name || 'Local',
+            address: p.formatted_address || p.vicinity || '',
+            location: {
+              lat: p.geometry!.location!.lat(),
+              lng: p.geometry!.location!.lng(),
+            }
+          }));
         setSuggestions(top3);
       }
     });
@@ -206,6 +245,9 @@ export default function Home() {
         setOrigin(result.location);
         setOriginAddress(result.formattedAddress);
         setTextInput('');
+        setRoutes([]);
+        setCheckLocations({});
+        resetChecklist();
       }
     }
   };
@@ -232,6 +274,9 @@ export default function Home() {
       setOrigin({ lat, lng });
       setOriginAddress(address);
       if (andDraw) setIsDrawingMode(true);
+      setRoutes([]);
+      setCheckLocations({});
+      resetChecklist();
     }
     setPendingLocation(null);
   };
@@ -258,6 +303,9 @@ export default function Home() {
       setOrigin({ lat, lng });
       setOriginAddress("Polígono do Terreno");
     }
+    setRoutes([]);
+    setCheckLocations({});
+    resetChecklist();
   };
 
   // ─── Clear All ────────────────────────────────────────────────────────────
@@ -267,6 +315,7 @@ export default function Home() {
     setPolygonPath(undefined); setIsDrawingMode(false);
     setRoutes([]); setActiveCheckId(null); setActiveRouteId(null);
     setSuggestions([]); setTextInput('');
+    setCheckLocations({});
     resetChecklist();
   };
 
@@ -510,6 +559,8 @@ export default function Home() {
         <PrintReport
           checklist={checklist}
           terrainAddress={originAddress}
+          origin={origin}
+          checkLocations={checkLocations}
           onClose={() => setShowReport(false)}
         />
       )}
