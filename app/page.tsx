@@ -199,9 +199,14 @@ export default function Home() {
           if (publicOnly.length > 0) filtered = publicOnly;
         }
 
-        // Guarda contra resultados sem geometria (evita crash)
+        // Guarda contra resultados sem geometria (evita crash) e ORDENA POR DISTÂNCIA
         const top3: PlaceSuggestion[] = filtered
           .filter(p => p.geometry?.location != null)
+          .sort((a, b) => {
+            const distA = window.google.maps.geometry.spherical.computeDistanceBetween(polygonCenter, a.geometry!.location!);
+            const distB = window.google.maps.geometry.spherical.computeDistanceBetween(polygonCenter, b.geometry!.location!);
+            return distA - distB;
+          })
           .slice(0, 3)
           .map(p => ({
             name: p.name || 'Local',
