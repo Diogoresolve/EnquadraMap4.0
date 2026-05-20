@@ -112,8 +112,7 @@ export default function Home() {
     if (mode === 'WALKING' && item.maxDistanceWalk && result.distanceValue <= item.maxDistanceWalk) isValid = true;
     if (mode === 'TRANSIT' && item.maxTimeTransport && (result.durationValue / 60) <= item.maxTimeTransport) isValid = true;
 
-    if (!isValid) return "#ef4444"; // Red for Fail
-    // Infraestrutura = Sky Blue. Others (Social/Education) = Emerald Green.
+    if (!isValid) return "#ef4444";
     return item.category === 'Infraestrutura' ? "#0ea5e9" : "#10b981";
   };
 
@@ -220,7 +219,7 @@ export default function Home() {
   /** Called when user clicks an item in AnalysisSidebar */
   const handleItemSelect = useCallback((id: string) => {
     setActiveCheckId(id);
-    setIsDrawingMode(false); // always exit drawing mode when picking a check item
+    setIsDrawingMode(false);
     setSuggestions([]);
     setTextInput('');
     const item = checklist.find(i => i.id === id);
@@ -239,7 +238,6 @@ export default function Home() {
       const result = await geocodeAddress(textInput);
       if (result) await computeCheckRoute(checkItem, result.location, result.formattedAddress);
     } else {
-      // Set terrain origin by text
       const result = await geocodeAddress(textInput);
       if (result) {
         setOrigin(result.location);
@@ -296,7 +294,6 @@ export default function Home() {
     setPolygonPath(path);
     setIsDrawingMode(false);
 
-    // If there isn't an origin yet, set it to the centroid
     if (!origin) {
       const lat = path.reduce((s, p) => s + p.lat, 0) / path.length;
       const lng = path.reduce((s, p) => s + p.lng, 0) / path.length;
@@ -335,7 +332,6 @@ export default function Home() {
   return (
     <main className="flex h-screen w-screen flex-col bg-gray-950 text-white font-sans overflow-hidden">
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="absolute top-0 left-0 z-10 w-full px-6 pt-5 pb-3 bg-gradient-to-b from-black/80 to-transparent pointer-events-none flex justify-between items-start gap-4">
         <div>
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
@@ -344,26 +340,21 @@ export default function Home() {
           <p className="text-[10px] text-gray-500 mt-0.5">Portaria MCID Nº 725/2023</p>
         </div>
 
-        {/* Terrain Info + Actions */}
         {originAddress && (
           <div className="pointer-events-auto bg-black/60 backdrop-blur rounded-xl border border-white/10 px-4 py-2.5 flex items-center gap-3">
             <div>
               <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Terreno</p>
               <p className="text-sm font-semibold text-white max-w-[220px] truncate">{originAddress}</p>
             </div>
-            {/* Draw Polygon Button */}
             <button
               onClick={() => setIsDrawingMode(v => !v)}
               title={isDrawingMode ? "Cancelar desenho" : "Redesenhar polígono do terreno"}
               className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all
-                ${isDrawingMode
-                  ? 'bg-yellow-500 text-black animate-pulse'
-                  : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
+                ${isDrawingMode ? 'bg-yellow-500 text-black animate-pulse' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
             >
               <PenLine className="w-4 h-4" />
               {isDrawingMode ? 'Desenhando...' : 'Polígono'}
             </button>
-            {/* Print Report Button */}
             <button
               onClick={() => setShowReport(true)}
               title="Gerar relatório PDF"
@@ -384,8 +375,6 @@ export default function Home() {
       </header>
 
       <div className="relative flex-1 w-full h-full">
-
-        {/* ── Map ──────────────────────────────────────────────────────── */}
         <MapDisplay
           origin={origin}
           target={null}
@@ -398,13 +387,9 @@ export default function Home() {
           onPolygonComplete={handlePolygonComplete}
         />
 
-        {/* ── Bottom Input Overlay ──────────────────────────────────── */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4 pointer-events-auto space-y-2">
-
-          {/* Active Check Item: Search bar + suggestions */}
           {activeCheckId && activeCheckItem ? (
             <div className="bg-black/85 backdrop-blur-xl border border-blue-500/40 rounded-2xl shadow-2xl overflow-hidden">
-              {/* Header strip */}
               <div className="flex items-center gap-3 p-3 border-b border-white/10">
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                   <MapPin className="text-white w-4 h-4" />
@@ -422,7 +407,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Auto-suggestions */}
               {isSearching && (
                 <div className="flex items-center gap-2 px-4 py-3 text-gray-400 text-sm">
                   <Loader2 className="w-4 h-4 animate-spin" /> Buscando mais próximos...
@@ -444,7 +428,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Manual text search */}
               <form onSubmit={handleTextSubmit} className="flex items-center gap-2 px-3 pb-3">
                 <input
                   autoFocus
@@ -459,7 +442,6 @@ export default function Home() {
               </form>
             </div>
           ) : !origin ? (
-            /* Initial terrain input */
             <div className="bg-gray-900/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
               <form onSubmit={handleTextSubmit} className="flex items-center gap-2 p-3">
                 <input
@@ -474,45 +456,33 @@ export default function Home() {
               </form>
               <div className="px-4 pb-3 flex items-center gap-2 text-gray-600 text-xs">
                 <span>ou</span>
-                <button
-                  onClick={() => setIsDrawingMode(true)}
-                  className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-semibold"
-                >
+                <button onClick={() => setIsDrawingMode(true)} className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-semibold">
                   <PenLine className="w-3.5 h-3.5" /> Desenhar polígono no mapa
                 </button>
               </div>
             </div>
           ) : null}
 
-          {/* Drawing mode banner */}
           {isDrawingMode && !activeCheckId && (
             <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <PenLine className="w-4 h-4 text-yellow-400 animate-pulse" />
                 <p className="text-yellow-300 text-sm font-semibold">Clique no mapa para desenhar o polígono do terreno</p>
               </div>
-              <button
-                onClick={() => setIsDrawingMode(false)}
-                className="text-yellow-600 hover:text-yellow-300 shrink-0"
-              >
+              <button onClick={() => setIsDrawingMode(false)} className="text-yellow-600 hover:text-yellow-300 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
 
-        {/* ── Confirmation Modal ────────────────────────────────────── */}
         {pendingLocation && (
           <div className="absolute inset-x-0 top-28 mx-auto z-50 w-80 bg-black/90 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-2xl flex flex-col gap-3 pointer-events-auto">
             {!origin ? (
-              // First-time: offer 3 options
               <>
                 <h3 className="text-white font-bold text-sm">Definir centro do terreno?</h3>
                 <p className="text-gray-300 text-xs leading-relaxed">{pendingLocation.address}</p>
-                <button
-                  onClick={() => confirmLocation(true)}
-                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-bold transition-all flex items-center justify-center gap-2"
-                >
+                <button onClick={() => confirmLocation(true)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-bold transition-all flex items-center justify-center gap-2">
                   <PenLine className="w-4 h-4" /> Confirmar centro + Desenhar Polígono
                 </button>
                 <button onClick={() => confirmLocation(false)} className="w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-xs transition-all">
@@ -523,24 +493,18 @@ export default function Home() {
                 </button>
               </>
             ) : (
-              // Already has origin: normal check confirm
               <>
                 <h3 className="text-white font-bold text-sm">Confirmar local?</h3>
                 <p className="text-gray-300 text-xs leading-relaxed">{pendingLocation.address}</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setPendingLocation(null)} className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-sm font-bold transition-all">
-                    Cancelar
-                  </button>
-                  <button onClick={() => confirmLocation(false)} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-bold transition-all">
-                    Confirmar
-                  </button>
+                  <button onClick={() => setPendingLocation(null)} className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-sm font-bold transition-all">Cancelar</button>
+                  <button onClick={() => confirmLocation(false)} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-bold transition-all">Confirmar</button>
                 </div>
               </>
             )}
           </div>
         )}
 
-        {/* ── Sidebar ───────────────────────────────────────────────── */}
         {origin && (
           <div className="absolute top-20 right-0 h-[calc(100vh-80px)] pointer-events-auto">
             <AnalysisSidebar
@@ -554,7 +518,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* ── Print Report Modal ────────────────────────────────────── */}
       {showReport && (
         <PrintReport
           checklist={checklist}

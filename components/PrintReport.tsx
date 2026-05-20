@@ -36,7 +36,6 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
     const exportKML = () => {
         const dateStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
 
-        // Styles KML
         const styles = `
     <Style id="terrain">
       <IconStyle>
@@ -64,7 +63,6 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
       </IconStyle>
     </Style>`;
 
-        // Marcador do terreno
         const terrainMark = origin
             ? `
     <Placemark>
@@ -75,7 +73,6 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
     </Placemark>`
             : '';
 
-        // Marcadores dos itens verificados
         const itemMarks = checklist
             .filter(item => checkLocations?.[item.id])
             .map(item => {
@@ -123,12 +120,10 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
 
     return (
         <>
-            {/* ══ Overlay (tela) ══ */}
             <div
                 id="print-overlay"
                 className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-start justify-center p-6 overflow-y-auto"
             >
-                {/* Botões — ocultos na impressão */}
                 <div className="no-print fixed top-4 right-4 z-[201] flex gap-2">
                     <button
                         onClick={exportKML}
@@ -151,46 +146,42 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                     </button>
                 </div>
 
-                {/* ══ ÁREA IMPRESSA ══ */}
                 <div id="enquadramap-report" className="bg-white text-gray-900 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
 
-                    {/* Cabeçalho */}
-                    <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 p-5 text-white">
+                    <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 print:bg-none print:bg-white print:border-b-2 print:border-black p-5 text-white print:text-black">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-xl font-bold tracking-tight">EnquadraMap</h1>
-                                <p className="text-emerald-100 text-xs mt-0.5">Relatório de Inserção Urbana — Portaria MCID Nº 725/2023</p>
+                                <p className="text-emerald-100 print:text-gray-600 text-xs mt-0.5">Relatório de Inserção Urbana — Portaria MCID Nº 725/2023</p>
                             </div>
-                            <div className="text-right text-xs text-emerald-100">
+                            <div className="text-right text-xs text-emerald-100 print:text-gray-600">
                                 <p>{today}</p>
-                                <p className="font-bold text-white text-sm mt-1">
+                                <p className="font-bold text-white print:text-black text-sm mt-1">
                                     {isApto ? '✅ APTO' : allDone ? '❌ NÃO APTO' : '⏳ INCOMPLETO'}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 bg-white/10 rounded-lg px-3 py-2">
-                            <p className="text-[9px] text-emerald-200 uppercase font-bold tracking-widest">Terreno Analisado</p>
-                            <p className="text-white font-semibold text-sm mt-0.5">{terrainAddress || 'Não informado'}</p>
+                        <div className="mt-3 bg-white/10 print:bg-transparent print:border print:border-gray-400 rounded-lg px-3 py-2">
+                            <p className="text-[9px] text-emerald-200 print:text-gray-500 uppercase font-bold tracking-widest">Terreno Analisado</p>
+                            <p className="text-white print:text-black font-semibold text-sm mt-0.5">{terrainAddress || 'Não informado'}</p>
                         </div>
                     </div>
 
-                    {/* Resumo */}
-                    <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+                    <div className="grid grid-cols-3 divide-x divide-gray-100 print:divide-gray-400 border-b border-gray-100 print:border-gray-400">
                         <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-green-600">{successCount}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Conformes</p>
+                            <p className="text-xl font-bold text-green-600 print:text-black">{successCount}</p>
+                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Conformes</p>
                         </div>
                         <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-red-600">{failCount}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Não Conformes</p>
+                            <p className="text-xl font-bold text-red-600 print:text-black">{failCount}</p>
+                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Não Conformes</p>
                         </div>
                         <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-gray-400">{pendingCount}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">Pendentes</p>
+                            <p className="text-xl font-bold text-gray-400 print:text-gray-500">{pendingCount}</p>
+                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Pendentes</p>
                         </div>
                     </div>
 
-                    {/* Checklist por categoria — 2 colunas */}
                     <div className="p-4 space-y-4">
                         {Object.entries(groupedItems).map(([category, items]) => (
                             <div key={category}>
@@ -199,16 +190,16 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                 </h2>
                                 <div className={`grid gap-1.5 ${items.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                                     {items.map(item => (
-                                        <div key={item.id} className={`flex items-start gap-2 p-2 rounded-lg border text-[10px]
+                                        <div key={item.id} className={`flex items-start gap-2 p-2 rounded-lg border text-[10px] print:bg-transparent print:border-gray-400
                                             ${item.status === 'success' ? 'bg-green-50 border-green-100' :
                                               item.status === 'fail'    ? 'bg-red-50 border-red-100' :
                                                                           'bg-gray-50 border-gray-100'}`}>
                                             <div className="mt-0.5 shrink-0">
                                                 {item.status === 'success'
-                                                    ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                    ? <CheckCircle2 className="w-4 h-4 text-green-600 print:text-black" />
                                                     : item.status === 'fail'
-                                                        ? <XCircle className="w-4 h-4 text-red-600" />
-                                                        : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />}
+                                                        ? <XCircle className="w-4 h-4 text-red-600 print:text-black" />
+                                                        : <div className="w-4 h-4 rounded-full border-2 border-gray-300 print:border-gray-500" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-baseline gap-1">
@@ -231,7 +222,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                             </div>
                                             {item.status !== 'pending' && item.currentDistance && (
                                                 <div className={`shrink-0 text-right font-bold
-                                                    ${item.status === 'success' ? 'text-green-700' : 'text-red-600'}`}>
+                                                    ${item.status === 'success' ? 'text-green-700 print:text-black' : 'text-red-600 print:text-black'}`}>
                                                     <div className="flex items-center gap-0.5 justify-end">
                                                         {item.modeUsed === 'TRANSIT'
                                                             ? <Bus className="w-3 h-3" />
@@ -261,55 +252,66 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                 </div>
             </div>
 
-            {/* ══ CSS DE IMPRESSÃO — corrigido para não duplicar páginas ══ */}
+            {/* ══ CSS DE IMPRESSÃO — sem duplicação de página ══ */}
             <style>{`
                 @media print {
-
                     @page {
                         size: A4 portrait;
-                        margin: 8mm 10mm;
+                        margin: 10mm;
                     }
 
-                    /* 1. Esconde tudo com visibility */
+                    /* 1. Esconde tudo no body */
                     body * {
-                        visibility: hidden !important;
+                        visibility: hidden;
                     }
 
-                    /* 2. Colapsa o overlay para não gerar altura extra de página */
+                    /* 2. Reseta overflow e height dos containers principais para permitir múltiplas páginas */
+                    html, body, main, #print-overlay {
+                        height: auto !important;
+                        min-height: auto !important;
+                        overflow: visible !important;
+                        position: static !important;
+                    }
+
+                    /* 3. Mostra o relatório e o overlay */
+                    #print-overlay, #print-overlay * {
+                        visibility: visible;
+                    }
+
+                    /* 4. Ajusta o overlay e relatório para o topo */
                     #print-overlay {
-                        height: 0 !important;
-                        overflow: hidden !important;
+                        background: transparent !important;
                         padding: 0 !important;
                         margin: 0 !important;
+                        display: block !important;
                     }
 
-                    /* 3. Mostra só o relatório */
-                    #enquadramap-report,
-                    #enquadramap-report * {
-                        visibility: visible !important;
-                    }
-
-                    /* 4. Posiciona com absolute (não fixed) — evita repetição em múltiplas páginas */
                     #enquadramap-report {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
                         width: 100% !important;
                         max-width: 100% !important;
                         box-shadow: none !important;
                         border-radius: 0 !important;
-                        overflow: visible !important;
-                        font-size: 7.5pt !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                     }
 
-                    /* 5. Evita quebrar itens no meio da página */
+                    /* 5. Evita quebrar itens no meio */
                     #enquadramap-report > div > div {
                         page-break-inside: avoid;
                         break-inside: avoid;
                     }
 
-                    /* 6. Oculta botões */
-                    .no-print {
+                    /* 6. Força a impressão das cores de fundo */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+
+                    /* 7. Esconde botões */
+                    .no-print, .no-print * {
                         display: none !important;
                         visibility: hidden !important;
                     }

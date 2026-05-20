@@ -31,7 +31,6 @@ interface MapDisplayProps {
 const containerStyle = { width: '100%', height: '100%' };
 const defaultCenter = { lat: -23.5505, lng: -46.6333 };
 
-// Formata metros em km ou m
 const fmtDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
 export const MapDisplay = ({
@@ -42,7 +41,6 @@ export const MapDisplay = ({
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [isSatellite, setIsSatellite] = useState(false);
 
-    // ── Search ────────────────────────────────────────────────────────────
     const [searchText, setSearchText] = useState('');
     const [isSearchingNearby, setIsSearchingNearby] = useState(false);
     const [searchResults, setSearchResults] = useState<google.maps.places.PlaceResult[]>([]);
@@ -63,7 +61,6 @@ export const MapDisplay = ({
         disableDefaultUI: true, zoomControl: true, mapId: "4504f8b37365c3d0",
     }), []);
 
-    // Attach autocomplete for navigation (selecting suggestion = panTo)
     useEffect(() => {
         if (!map || !inputRef.current || autocompleteRef.current) return;
         autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
@@ -82,7 +79,6 @@ export const MapDisplay = ({
         });
     }, [map]);
 
-    // Generic nearby search (TextSearch)
     const searchNearby = () => {
         if (!map || !searchText.trim()) return;
         const mapCenter = map.getCenter();
@@ -143,7 +139,6 @@ export const MapDisplay = ({
                 onClick={handleMapClick}
                 onLoad={setMap}
             >
-                {/* Terrain marker */}
                 {calcOriginPosition && (
                     <Marker position={calcOriginPosition}
                         label={{ text: "TER", color: "white", fontWeight: "bold", fontSize: "12px" }}
@@ -152,14 +147,12 @@ export const MapDisplay = ({
                     />
                 )}
 
-                {/* Polygon */}
                 {polygonPath && (
                     <Polygon paths={polygonPath}
                         options={{ fillColor: "#10b981", fillOpacity: 0.3, strokeColor: "#10b981", strokeWeight: 2 }}
                     />
                 )}
 
-                {/* Drawing */}
                 <DrawingManager
                     onPolygonComplete={handlePolygonComplete}
                     options={{
@@ -169,7 +162,6 @@ export const MapDisplay = ({
                     drawingMode={isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null}
                 />
 
-                {/* Checklist Routes */}
                 {routes.map((route, index) => {
                     const isActive = route.id === activeRouteId;
                     return (
@@ -197,7 +189,6 @@ export const MapDisplay = ({
                     );
                 })}
 
-                {/* Generic Search Result Markers (purple, numbered) */}
                 {searchResults.map((result, i) => {
                     if (!result.geometry?.location) return null;
                     const isActive = activeResult === i;
@@ -244,14 +235,13 @@ export const MapDisplay = ({
                 })}
             </GoogleMap>
 
-            {/* ── Search Box ────────────────────────────────────────────── */}
+            {/* ── Search Box ─────────────────────────────────────────────── */}
             <div style={{
                 position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)',
                 zIndex: 20, width: 'min(440px, calc(100vw - 180px))',
                 display: 'flex', flexDirection: 'column',
                 filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))',
             }}>
-                {/* Input row */}
                 <div style={{
                     display: 'flex', alignItems: 'center',
                     background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)',
@@ -282,7 +272,6 @@ export const MapDisplay = ({
                             if (e.key === 'Escape') clearSearch();
                         }}
                     />
-                    {/* Buscar button */}
                     {searchText && (
                         <button onClick={searchNearby} style={{
                             padding: '0 10px', background: 'rgba(124,58,237,0.8)', border: 'none',
@@ -303,7 +292,6 @@ export const MapDisplay = ({
                     )}
                 </div>
 
-                {/* Results panel */}
                 {searchResults.length > 0 && (
                     <div style={{
                         background: 'rgba(10,12,18,0.95)', backdropFilter: 'blur(12px)',
@@ -326,9 +314,7 @@ export const MapDisplay = ({
                                     key={i}
                                     onClick={() => {
                                         setActiveResult(isActive ? null : i);
-                                        if (result.geometry?.location && map) {
-                                            map.panTo(result.geometry.location);
-                                        }
+                                        if (result.geometry?.location && map) map.panTo(result.geometry.location);
                                     }}
                                     style={{
                                         width: '100%', textAlign: 'left', background: isActive ? 'rgba(124,58,237,0.18)' : 'transparent',
@@ -339,13 +325,11 @@ export const MapDisplay = ({
                                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,58,237,0.12)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = isActive ? 'rgba(124,58,237,0.18)' : 'transparent')}
                                 >
-                                    {/* Numbered badge */}
                                     <span style={{
                                         width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                                         background: '#7c3aed', color: '#fff', fontSize: 11, fontWeight: 700,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     }}>{i + 1}</span>
-                                    {/* Info */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#f3f4f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {result.name}
@@ -354,13 +338,12 @@ export const MapDisplay = ({
                                             {result.vicinity || result.formatted_address || ''}
                                         </p>
                                     </div>
-                                    {/* Dist + rating */}
                                     <div style={{ flexShrink: 0, textAlign: 'right' }}>
                                         {dist !== null && (
                                             <p style={{ margin: 0, fontSize: 11, color: '#a78bfa', fontWeight: 700 }}>{fmtDist(dist)}</p>
                                         )}
                                         {result.rating && (
-                                            <p style={{ margin: '2px 0 0', fontSize: 10, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'flex-end' }}>
+                                            <p style={{ margin: '2px 0 0', fontSize: 10, color: '#fbbf24' }}>
                                                 ⭐ {result.rating.toFixed(1)}
                                             </p>
                                         )}
@@ -389,7 +372,6 @@ export const MapDisplay = ({
                 {isSatellite ? <><Map size={14} /> Mapa</> : <><Satellite size={14} /> Satélite</>}
             </button>
 
-            {/* Spin animation */}
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
