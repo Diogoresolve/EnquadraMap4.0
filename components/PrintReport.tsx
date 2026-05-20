@@ -118,13 +118,45 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
         URL.revokeObjectURL(url);
     };
 
+    // ─── Link para Motorista ───────────────────────────────────────
+    const [copiedLink, setCopiedLink] = React.useState(false);
+
+    const copyDriverLink = () => {
+        const payload = {
+            t: origin ? { a: terrainAddress, lat: origin.lat, lng: origin.lng } : null,
+            p: checklist
+                .filter(item => checkLocations?.[item.id] && item.status !== 'pending')
+                .map(item => ({
+                    l: item.label,
+                    a: item.address || "",
+                    lat: checkLocations![item.id].lat,
+                    lng: checkLocations![item.id].lng
+                }))
+        };
+        // Encode to base64 safely (handling UTF-8 chars via encodeURIComponent)
+        const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+        const url = `${window.location.origin}/motorista?data=${encoded}`;
+        
+        navigator.clipboard.writeText(url).then(() => {
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2000);
+        });
+    };
+
     return (
         <>
             <div
                 id="print-overlay"
                 className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-start justify-center p-6 overflow-y-auto"
             >
-                <div className="no-print fixed top-4 right-4 z-[201] flex gap-2">
+                <div className="no-print fixed top-4 right-4 z-[201] flex gap-2 flex-wrap justify-end max-w-[90%]">
+                    <button
+                        onClick={copyDriverLink}
+                        className={`px-4 py-2 ${copiedLink ? 'bg-green-500' : 'bg-orange-600 hover:bg-orange-500'} text-white font-bold rounded-xl text-sm flex items-center gap-2 shadow-lg transition-colors`}
+                        title="Gera um link simples para abrir no Waze/Maps no celular do motorista"
+                    >
+                        🚗 {copiedLink ? 'Link Copiado!' : 'Link Motorista'}
+                    </button>
                     <button
                         onClick={exportKML}
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm flex items-center gap-2 shadow-lg"
