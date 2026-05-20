@@ -122,18 +122,20 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
     const [copiedLink, setCopiedLink] = React.useState(false);
 
     const copyDriverLink = () => {
+        const round = (n: number) => Math.round(n * 100000) / 100000;
+        const shortAddr = (str: string) => str ? str.split('-')[0].trim() : "";
+        
         const payload = {
-            t: origin ? { a: terrainAddress, lat: origin.lat, lng: origin.lng } : null,
+            t: origin ? { a: shortAddr(terrainAddress), lat: round(origin.lat), lng: round(origin.lng) } : null,
             p: checklist
                 .filter(item => checkLocations?.[item.id] && item.status !== 'pending')
                 .map(item => ({
-                    l: item.label,
-                    a: item.address || "",
-                    lat: checkLocations![item.id].lat,
-                    lng: checkLocations![item.id].lng
+                    l: item.abbrev || item.label.substring(0, 15),
+                    a: shortAddr(item.address || ""),
+                    lat: round(checkLocations![item.id].lat),
+                    lng: round(checkLocations![item.id].lng)
                 }))
         };
-        // Encode to base64 safely (handling UTF-8 chars via encodeURIComponent)
         const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
         const url = `${window.location.origin}/motorista?data=${encoded}`;
         

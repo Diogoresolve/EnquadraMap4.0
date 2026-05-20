@@ -133,7 +133,15 @@ export default function Home() {
     // Auto-fallback to Transit if walking exceeds limit and transit is allowed
     if (checkItem.maxDistanceWalk && routeResult.distanceValue > checkItem.maxDistanceWalk && checkItem.maxTimeTransport) {
       const transitResult = await getRoute(startPoint, targetLocation, 'TRANSIT');
-      if (transitResult) { routeResult = transitResult; modeUsed = 'TRANSIT'; }
+      if (transitResult) { 
+        // Só substitui para mostrar a rota de ônibus no UI se o ônibus efetivamente PASSAR no teste.
+        // Se ambos falharem, mostrar a rota a pé é muito mais intuitivo para o usuário entender o porquê falhou.
+        const transitPasses = (transitResult.durationValue / 60) <= checkItem.maxTimeTransport;
+        if (transitPasses) {
+          routeResult = transitResult; 
+          modeUsed = 'TRANSIT'; 
+        }
+      }
     }
 
     const color = getCheckColor(checkItem, routeResult, modeUsed);
