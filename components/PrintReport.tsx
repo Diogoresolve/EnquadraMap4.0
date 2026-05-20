@@ -3,6 +3,7 @@
 import React from 'react';
 import { CheckItem } from '../hooks/usePortariaChecks';
 import { CheckCircle2, XCircle, Footprints, Bus, Clock, Download } from 'lucide-react';
+import { GoogleMap, MarkerF } from '@react-google-maps/api';
 
 type LatLng = { lat: number; lng: number };
 
@@ -214,6 +215,59 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                             <p className="text-xl font-bold text-gray-400 print:text-gray-500">{pendingCount}</p>
                             <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Pendentes</p>
                         </div>
+                    </div>
+
+                    {/* MAPA MACRO PARA IMPRESSÃO */}
+                    <div className="w-full h-64 bg-gray-100 border-b border-gray-100 print:border-gray-400 print:h-[400px]">
+                        {typeof window !== 'undefined' && window.google ? (
+                            <GoogleMap
+                                mapContainerStyle={{ width: '100%', height: '100%' }}
+                                options={{
+                                    disableDefaultUI: true,
+                                    zoomControl: false,
+                                    gestureHandling: 'none'
+                                }}
+                                onLoad={(map) => {
+                                    const bounds = new window.google.maps.LatLngBounds();
+                                    if (origin) bounds.extend(origin);
+                                    Object.values(checkLocations || {}).forEach(loc => bounds.extend(loc));
+                                    map.fitBounds(bounds, 50);
+                                }}
+                            >
+                                {origin && (
+                                    <MarkerF
+                                        position={origin}
+                                        icon={{
+                                            url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
+                                            scaledSize: new window.google.maps.Size(40, 40)
+                                        }}
+                                    />
+                                )}
+                                {Object.entries(checkLocations || {}).map(([id, loc]) => {
+                                    const item = checklist.find(i => i.id === id);
+                                    if (!item || item.status === 'pending') return null;
+                                    const iconUrl = item.status === 'success' ? 'go.png' : 'stop.png';
+                                    return (
+                                        <MarkerF
+                                            key={id}
+                                            position={loc}
+                                            icon={{
+                                                url: `http://maps.google.com/mapfiles/kml/paddle/${iconUrl}`,
+                                                scaledSize: new window.google.maps.Size(32, 32)
+                                            }}
+                                            label={{
+                                                text: item.abbrev || item.label.substring(0, 1),
+                                                color: '#000',
+                                                fontWeight: 'bold',
+                                                fontSize: '10px'
+                                            }}
+                                        />
+                                    );
+                                })}
+                            </GoogleMap>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Mapa indisponível</div>
+                        )}
                     </div>
 
                     <div className="p-4 space-y-4">

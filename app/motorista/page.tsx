@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MapPin, Navigation } from 'lucide-react';
+import { useJsApiLoader, GoogleMap, MarkerF } from '@react-google-maps/api';
 
 type Point = {
     l: string; // label
@@ -16,10 +17,18 @@ type Data = {
     p: Point[];
 };
 
+const LIBRARIES: ("geometry")[] = ["geometry"];
+
 function DriverContent() {
     const searchParams = useSearchParams();
     const [data, setData] = useState<Data | null>(null);
     const [error, setError] = useState(false);
+
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        libraries: LIBRARIES,
+    });
 
     useEffect(() => {
         const d = searchParams.get('data');
@@ -45,9 +54,18 @@ function DriverContent() {
     const wazeUrl = (lat: number, lng: number) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
     const mapsUrl = (lat: number, lng: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
+    const onLoad = (map: google.maps.Map) => {
+        if (data.p.length > 0 || data.t) {
+            const bounds = new window.google.maps.LatLngBounds();
+            if (data.t) bounds.extend(data.t);
+            data.p.forEach(pt => bounds.extend(pt));
+            map.fitBounds(bounds, 40); // 40px padding
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-20 font-sans">
-            <header className="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-10">
+            <header className="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-20">
                 <h1 className="text-lg font-bold flex items-center gap-2">
                     <Navigation className="w-5 h-5" />
                     EnquadraMap - Motorista
@@ -58,6 +76,49 @@ function DriverContent() {
                     </p>
                 )}
             </header>
+
+            {/* Mapa Macro */}
+            <div className="w-full h-64 bg-gray-200 relative z-10 border-b border-gray-300 shadow-sm">
+                {!isLoaded ? (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Carregando mapa...</div>
+                ) : (
+                    <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        options={{
+                            disableDefaultUI: true,
+                            zoomControl: true,
+                            gestureHandling: 'greedy' // Permite arrastar com 1 dedo
+                        }}
+                        onLoad={onLoad}
+                    >
+                        {data.t && (
+                            <MarkerF
+                                position={{ lat: data.t.lat, lng: data.t.lng }}
+                                icon={{
+                                    url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
+                                    scaledSize: new window.google.maps.Size(40, 40)
+                                }}
+                            />
+                        )}
+                        {data.p.map((pt, i) => (
+                            <MarkerF
+                                key={i}
+                                position={{ lat: pt.lat, lng: pt.lng }}
+                                icon={{
+                                    url: 'http://maps.google.com/mapfiles/kml/paddle/red-circle.png',
+                                    scaledSize: new window.google.maps.Size(32, 32)
+                                }}
+                                label={{
+                                    text: pt.l.substring(0, 1).toUpperCase(),
+                                    color: '#000',
+                                    fontWeight: 'bold',
+                                    fontSize: '11px'
+                                }}
+                            />
+                        ))}
+                    </GoogleMap>
+                )}
+            </div>
 
             <main className="p-4 space-y-4 max-w-md mx-auto mt-2">
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Destinos da Vistoria ({data.p.length})</p>
