@@ -255,7 +255,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
 
                     {/* === PÁGINA 2: CHECKLIST (Compacto) === */}
                     <div className="print:pt-0">
-                        <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 print:bg-none print:bg-white print:border-b-2 print:border-black p-5 text-white print:text-black print:pt-0">
+                        <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 print:bg-none print:bg-white print:border-b-2 print:border-black p-5 print:px-3 print:py-2 text-white print:text-black">
                             <div className="flex items-start justify-between">
                                 <div>
                                     <h1 className="text-xl font-bold tracking-tight">EnquadraMap</h1>
@@ -268,7 +268,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                     </p>
                                 </div>
                             </div>
-                            <div className="mt-3 bg-white/10 print:bg-transparent print:border print:border-gray-400 rounded-lg px-3 py-2 flex justify-between items-center">
+                            <div className="mt-3 print:mt-1.5 bg-white/10 print:bg-transparent print:border print:border-gray-400 rounded-lg px-3 py-2 print:py-1 print:px-2 flex justify-between items-center">
                                 <div>
                                     <p className="text-[9px] text-emerald-200 print:text-gray-500 uppercase font-bold tracking-widest">{reportTitle}</p>
                                     <p className="text-white print:text-black font-semibold text-sm mt-0.5 truncate max-w-lg">{terrainAddress || 'Não informado'}</p>
@@ -277,29 +277,29 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                         </div>
 
                         <div className="grid grid-cols-3 divide-x divide-gray-100 print:divide-gray-400 border-b border-gray-100 print:border-gray-400">
-                            <div className="py-3 text-center">
+                            <div className="py-3 print:py-1.5 text-center">
                                 <p className="text-xl font-bold text-green-600 print:text-black">{successCount}</p>
                                 <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Conformes</p>
                             </div>
-                            <div className="py-3 text-center">
+                            <div className="py-3 print:py-1.5 text-center">
                                 <p className="text-xl font-bold text-red-600 print:text-black">{failCount}</p>
                                 <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Não Conformes</p>
                             </div>
-                            <div className="py-3 text-center">
+                            <div className="py-3 print:py-1.5 text-center">
                                 <p className="text-xl font-bold text-gray-400 print:text-gray-500">{pendingCount}</p>
                                 <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Pendentes</p>
                             </div>
                         </div>
 
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 print:p-2 print:px-3 space-y-4 print:space-y-1.5">
                         {Object.entries(groupedItems).map(([category, items]) => (
                             <div key={category}>
-                                <h2 className="text-[9px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-1 mb-2">
+                                <h2 className="text-[9px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100 pb-1 mb-2 print:mb-1">
                                     {category}
                                 </h2>
-                                <div className={`grid gap-1.5 ${items.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                <div className={`grid gap-1.5 print:gap-1 ${items.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                                     {items.map(item => (
-                                        <div key={item.id} className={`flex items-start gap-2 p-2 rounded-lg border text-[10px] print:bg-transparent print:border-gray-400
+                                        <div key={item.id} className={`flex items-start gap-2 print:gap-1.5 p-2 print:p-1.5 rounded-lg border text-[10px] print:bg-transparent print:border-gray-400
                                             ${item.status === 'success' ? 'bg-green-50 border-green-100' :
                                               item.status === 'fail'    ? 'bg-red-50 border-red-100' :
                                                                           'bg-gray-50 border-gray-100'}`}>
@@ -324,7 +324,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                                 </p>
                                                 {/* Endereço completo — sem truncate para ser pesquisável */}
                                                 {item.address && (
-                                                    <p className="text-gray-500 mt-1 italic leading-snug break-words">
+                                                    <p className="text-gray-500 mt-1 print:mt-0.5 print:text-[8px] italic leading-snug print:leading-tight break-words">
                                                         📍 {item.address}
                                                     </p>
                                                 )}
@@ -352,7 +352,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                             </div>
                         ))}
 
-                        <div className="pt-3 border-t border-gray-100 text-[8px] text-gray-400 text-center space-y-0.5">
+                        <div className="pt-3 print:pt-1.5 border-t border-gray-100 text-[8px] print:text-[7px] text-gray-400 text-center space-y-0.5">
                             <p>Documento gerado automaticamente pelo sistema EnquadraMap</p>
                             <p>Referência: Portaria MCID Nº 725, de 15 de junho de 2023 — Programa Minha Casa, Minha Vida (MCMV)</p>
                             <p>Este relatório é um instrumento auxiliar e não substitui a análise técnica do órgão competente.</p>
