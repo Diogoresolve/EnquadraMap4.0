@@ -121,6 +121,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
 
     // ─── Link para Motorista ───────────────────────────────────────
     const [copiedLink, setCopiedLink] = React.useState(false);
+    const [reportTitle, setReportTitle] = React.useState('TERRENO 01'); // Nome editável para a capa
 
     const copyDriverLink = () => {
         const round = (n: number) => Math.round(n * 100000) / 100000;
@@ -181,94 +182,114 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                     </button>
                 </div>
 
-                <div id="enquadramap-report" className="bg-white text-gray-900 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
+                <div id="enquadramap-report" className="bg-white text-gray-900 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
 
-                    <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 print:bg-none print:bg-white print:border-b-2 print:border-black p-5 text-white print:text-black">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h1 className="text-xl font-bold tracking-tight">EnquadraMap</h1>
-                                <p className="text-emerald-100 print:text-gray-600 text-xs mt-0.5">Relatório de Inserção Urbana — Portaria MCID Nº 725/2023</p>
+                    {/* === CAPA DO RELATÓRIO (MAPA) === */}
+                    <div className="flex flex-col border-b-8 border-gray-100 print:border-none print:mb-0" style={{ pageBreakAfter: 'always' }}>
+                        <div className="bg-gray-50 p-5 print:bg-white print:border-b-2 print:border-black">
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    value={reportTitle}
+                                    onChange={e => setReportTitle(e.target.value)}
+                                    className="text-3xl font-bold bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none w-full text-gray-900 print:text-black print:border-none uppercase"
+                                    placeholder="NOME DO TERRENO..."
+                                />
                             </div>
-                            <div className="text-right text-xs text-emerald-100 print:text-gray-600">
-                                <p>{today}</p>
-                                <p className="font-bold text-white print:text-black text-sm mt-1">
-                                    {isApto ? '✅ APTO' : allDone ? '❌ NÃO APTO' : '⏳ INCOMPLETO'}
-                                </p>
-                            </div>
+                            <p className="text-sm text-gray-500 mt-2 font-medium">{terrainAddress || 'Endereço não informado'}</p>
+                            <p className="text-xs text-gray-400 mt-1">Anexo I - Mapa de Situação</p>
                         </div>
-                        <div className="mt-3 bg-white/10 print:bg-transparent print:border print:border-gray-400 rounded-lg px-3 py-2">
-                            <p className="text-[9px] text-emerald-200 print:text-gray-500 uppercase font-bold tracking-widest">Terreno Analisado</p>
-                            <p className="text-white print:text-black font-semibold text-sm mt-0.5">{terrainAddress || 'Não informado'}</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 divide-x divide-gray-100 print:divide-gray-400 border-b border-gray-100 print:border-gray-400">
-                        <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-green-600 print:text-black">{successCount}</p>
-                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Conformes</p>
-                        </div>
-                        <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-red-600 print:text-black">{failCount}</p>
-                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Não Conformes</p>
-                        </div>
-                        <div className="py-3 text-center">
-                            <p className="text-xl font-bold text-gray-400 print:text-gray-500">{pendingCount}</p>
-                            <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Pendentes</p>
-                        </div>
-                    </div>
-
-                    {/* MAPA MACRO PARA IMPRESSÃO */}
-                    <div className="w-full h-64 bg-gray-100 border-b border-gray-100 print:border-gray-400 print:h-[400px]">
-                        {typeof window !== 'undefined' && window.google ? (
-                            <GoogleMap
-                                mapContainerStyle={{ width: '100%', height: '100%' }}
-                                options={{
-                                    disableDefaultUI: true,
-                                    zoomControl: false,
-                                    gestureHandling: 'none'
-                                }}
-                                onLoad={(map) => {
-                                    const bounds = new window.google.maps.LatLngBounds();
-                                    if (origin) bounds.extend(origin);
-                                    Object.values(checkLocations || {}).forEach(loc => bounds.extend(loc));
-                                    map.fitBounds(bounds, 50);
-                                }}
-                            >
-                                {origin && (
-                                    <MarkerF
-                                        position={origin}
-                                        icon={{
-                                            url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
-                                            scaledSize: new window.google.maps.Size(40, 40)
-                                        }}
-                                    />
-                                )}
-                                {Object.entries(checkLocations || {}).map(([id, loc]) => {
-                                    const item = checklist.find(i => i.id === id);
-                                    if (!item || item.status === 'pending') return null;
-                                    const iconUrl = item.status === 'success' ? 'go.png' : 'stop.png';
-                                    return (
+                        
+                        {/* Mapa Macro com filtro P&B na impressão para economizar tinta */}
+                        <div className="w-full h-[400px] print:h-[220mm] bg-gray-100 relative print:filter print:grayscale">
+                            {typeof window !== 'undefined' && window.google ? (
+                                <GoogleMap
+                                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                                    options={{
+                                        disableDefaultUI: true,
+                                        zoomControl: false,
+                                        gestureHandling: 'none'
+                                    }}
+                                    onLoad={(map) => {
+                                        const bounds = new window.google.maps.LatLngBounds();
+                                        if (origin) bounds.extend(origin);
+                                        Object.values(checkLocations || {}).forEach(loc => bounds.extend(loc));
+                                        map.fitBounds(bounds, 50);
+                                    }}
+                                >
+                                    {origin && (
                                         <MarkerF
-                                            key={id}
-                                            position={loc}
+                                            position={origin}
                                             icon={{
-                                                url: `http://maps.google.com/mapfiles/kml/paddle/${iconUrl}`,
-                                                scaledSize: new window.google.maps.Size(32, 32)
-                                            }}
-                                            label={{
-                                                text: item.abbrev || item.label.substring(0, 1),
-                                                color: '#000',
-                                                fontWeight: 'bold',
-                                                fontSize: '10px'
+                                                url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
+                                                scaledSize: new window.google.maps.Size(40, 40)
                                             }}
                                         />
-                                    );
-                                })}
-                            </GoogleMap>
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Mapa indisponível</div>
-                        )}
+                                    )}
+                                    {Object.entries(checkLocations || {}).map(([id, loc]) => {
+                                        const item = checklist.find(i => i.id === id);
+                                        if (!item || item.status === 'pending') return null;
+                                        const iconUrl = item.status === 'success' ? 'go.png' : 'stop.png';
+                                        return (
+                                            <MarkerF
+                                                key={id}
+                                                position={loc}
+                                                icon={{
+                                                    url: `http://maps.google.com/mapfiles/kml/paddle/${iconUrl}`,
+                                                    scaledSize: new window.google.maps.Size(32, 32)
+                                                }}
+                                                label={{
+                                                    text: item.abbrev || item.label.substring(0, 1),
+                                                    color: '#000',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '10px'
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </GoogleMap>
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Mapa indisponível</div>
+                            )}
+                        </div>
                     </div>
+
+                    {/* === PÁGINA 2: CHECKLIST (Compacto) === */}
+                    <div className="print:pt-0">
+                        <div className="bg-gradient-to-r from-emerald-600 to-cyan-700 print:bg-none print:bg-white print:border-b-2 print:border-black p-5 text-white print:text-black print:pt-0">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h1 className="text-xl font-bold tracking-tight">EnquadraMap</h1>
+                                    <p className="text-emerald-100 print:text-gray-600 text-xs mt-0.5">Relatório de Inserção Urbana — Portaria MCID Nº 725/2023</p>
+                                </div>
+                                <div className="text-right text-xs text-emerald-100 print:text-gray-600">
+                                    <p>{today}</p>
+                                    <p className="font-bold text-white print:text-black text-sm mt-1">
+                                        {isApto ? '✅ APTO' : allDone ? '❌ NÃO APTO' : '⏳ INCOMPLETO'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-3 bg-white/10 print:bg-transparent print:border print:border-gray-400 rounded-lg px-3 py-2 flex justify-between items-center">
+                                <div>
+                                    <p className="text-[9px] text-emerald-200 print:text-gray-500 uppercase font-bold tracking-widest">{reportTitle}</p>
+                                    <p className="text-white print:text-black font-semibold text-sm mt-0.5 truncate max-w-lg">{terrainAddress || 'Não informado'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 divide-x divide-gray-100 print:divide-gray-400 border-b border-gray-100 print:border-gray-400">
+                            <div className="py-3 text-center">
+                                <p className="text-xl font-bold text-green-600 print:text-black">{successCount}</p>
+                                <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Conformes</p>
+                            </div>
+                            <div className="py-3 text-center">
+                                <p className="text-xl font-bold text-red-600 print:text-black">{failCount}</p>
+                                <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Não Conformes</p>
+                            </div>
+                            <div className="py-3 text-center">
+                                <p className="text-xl font-bold text-gray-400 print:text-gray-500">{pendingCount}</p>
+                                <p className="text-xs text-gray-500 print:text-gray-600 mt-0.5">Pendentes</p>
+                            </div>
+                        </div>
 
                     <div className="p-4 space-y-4">
                         {Object.entries(groupedItems).map(([category, items]) => (
@@ -340,7 +361,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                 </div>
             </div>
 
-            {/* ══ CSS DE IMPRESSÃO — sem duplicação de página ══ */}
+            {/* ══ CSS DE IMPRESSÃO ══ */}
             <style>{`
                 @media print {
                     @page {
@@ -386,19 +407,24 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                         padding: 0 !important;
                     }
 
-                    /* 5. Evita quebrar itens no meio */
-                    #enquadramap-report > div > div {
+                    /* 5. Evita quebrar itens do checklist no meio */
+                    #enquadramap-report > div > div > div {
                         page-break-inside: avoid;
                         break-inside: avoid;
                     }
 
-                    /* 6. Força a impressão das cores de fundo */
+                    /* 6. Força a impressão das cores de fundo para os crachás */
                     * {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
 
-                    /* 7. Esconde botões */
+                    /* 7. Filtro PB para o mapa */
+                    .print\\:grayscale {
+                        filter: grayscale(100%) contrast(1.2) !important;
+                    }
+
+                    /* 8. Esconde botões */
                     .no-print, .no-print * {
                         display: none !important;
                         visibility: hidden !important;
