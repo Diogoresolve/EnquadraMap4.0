@@ -186,36 +186,26 @@ export default function Home() {
     setSuggestions([]);
 
     const service = new window.google.maps.places.PlacesService(document.createElement('div'));
-    const request: google.maps.places.TextSearchRequest = {
-      query: checkItem.searchKeyword,
+    
+    const request: google.maps.places.PlaceSearchRequest = {
       location: polygonCenter,
-      radius: checkItem.maxDistanceWalk || 2000,
+      keyword: checkItem.searchKeyword,
+      rankBy: window.google.maps.places.RankBy.DISTANCE,
     };
 
     // Timeout de segurança: garante que o spinner sempre some
     const searchTimeout = setTimeout(() => setIsSearching(false), 10_000);
 
-    service.textSearch(request, (results, status) => {
+    service.nearbySearch(request, (results, status) => {
       clearTimeout(searchTimeout);
       setIsSearching(false);
 
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        // Para itens de educação, filtra para mostrar somente escolas/creches públicas
-        let filtered = results;
-        if (EDUCATION_PUBLIC_IDS.has(checkItem.id)) {
-          const publicOnly = results.filter(p => isPublicSchool(p.name || ''));
-          if (publicOnly.length > 0) filtered = publicOnly;
-        }
-
-        // Guarda contra resultados sem geometria (evita crash) e ORDENA POR DISTÂNCIA
-        const top3: PlaceSuggestion[] = filtered
+      if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+        
+        // Guarda contra resultados sem geometria e extrai os 4 mais próximos
+        const topResults: PlaceSuggestion[] = results
           .filter(p => p.geometry?.location != null)
-          .sort((a, b) => {
-            const distA = window.google.maps.geometry.spherical.computeDistanceBetween(polygonCenter, a.geometry!.location!);
-            const distB = window.google.maps.geometry.spherical.computeDistanceBetween(polygonCenter, b.geometry!.location!);
-            return distA - distB;
-          })
-          .slice(0, 3)
+          .slice(0, 4)
           .map(p => ({
             name: p.name || 'Local',
             address: p.formatted_address || p.vicinity || '',
@@ -224,7 +214,7 @@ export default function Home() {
               lng: p.geometry!.location!.lng(),
             }
           }));
-        setSuggestions(top3);
+        setSuggestions(topResults);
       }
     });
   }, [origin, isLoaded, polygonPath, getOriginForCheck]);

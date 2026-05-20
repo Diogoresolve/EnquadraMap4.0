@@ -90,7 +90,7 @@ const REQUIREMENTS: Requirement[] = [
         maxDistanceWalk: 1000,
         maxTimeTransport: 15,
         description: 'Creche ou Pré-escola pública (0-5 anos)',
-        searchKeyword: 'creche escola infantil',
+        searchKeyword: 'creche pré-escola',
         abbrev: 'CRE'
     },
     {
