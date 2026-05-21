@@ -3,6 +3,7 @@
 // reconciliação/anexação com o aplicativo interno de compliance do parecer final.
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   Building2, MapPin, Users, ChevronRight, ArrowLeft,
   Search, Loader2, CheckCircle2, Sparkles, Link2,
@@ -253,10 +254,17 @@ export function OnboardingFlow({
             <ChevronRight className="w-5 h-5" />
           </button>
 
+          <Link
+            href="/historico"
+            className="w-full py-3 px-8 flex items-center justify-center gap-2 text-sm font-bold bg-white/5 border border-white/8 hover:bg-white/10 hover:border-emerald-500/30 text-gray-300 hover:text-white rounded-xl transition-all"
+          >
+            📋 Ver Histórico de Vistorias
+          </Link>
+
           {savedProjects.length > 0 && onLoadSaved && (
             <button
               onClick={() => onLoadSaved(savedProjects[0].id)}
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors mt-1"
             >
               <Link2 className="w-4 h-4" />
               Retomar análise salva
