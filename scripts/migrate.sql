@@ -12,6 +12,19 @@ CREATE TABLE IF NOT EXISTS vistorias (
   -- ID curto legível (ex: "aB3xK9") gerado no servidor com nanoid
   id              TEXT PRIMARY KEY,
 
+  -- Identificação do empreendimento
+  nome            TEXT NOT NULL DEFAULT '',
+  promotor        TEXT NOT NULL DEFAULT '',
+  num_unidades    TEXT NOT NULL DEFAULT '',
+  programa        TEXT NOT NULL DEFAULT '',
+
+  -- ★ Nº do chamado interno — chave de reconciliação com o sistema de compliance
+  -- Armazenado como coluna dedicada (além do payload JSON) para facilitar:
+  --   - Busca no painel de histórico por nú de chamado
+  --   - Exportação CSV para migração para o app de parecer final
+  --   - Filtros e ordenação sem precisar abrir o JSONB
+  numero_chamado  TEXT NOT NULL DEFAULT '',
+
   -- Endereço formatado pelo Google Maps Geocoder
   endereco        TEXT NOT NULL,
 
@@ -30,6 +43,11 @@ CREATE TABLE IF NOT EXISTS vistorias (
 -- Índice para ordenação por data (painel de histórico)
 CREATE INDEX IF NOT EXISTS idx_vistorias_criado_em
   ON vistorias (criado_em DESC);
+
+-- Índice para busca rápida por nº de chamado (integração compliance)
+CREATE INDEX IF NOT EXISTS idx_vistorias_numero_chamado
+  ON vistorias (numero_chamado)
+  WHERE numero_chamado <> '';
 
 -- ─── Tabela de fotos das vistorias ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS vistoria_fotos (

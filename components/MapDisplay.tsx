@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { GoogleMap, Marker, DirectionsRenderer, DrawingManager, Polygon, InfoWindow } from '@react-google-maps/api';
 import { Satellite, Map, Search, X, Star, Loader2 } from 'lucide-react';
+import { getMapIcon } from '../utils/mapIcons';
 
 type LatLng = { lat: number; lng: number };
 
@@ -141,9 +142,12 @@ export const MapDisplay = ({
             >
                 {calcOriginPosition && (
                     <Marker position={calcOriginPosition}
-                        label={{ text: "TER", color: "white", fontWeight: "bold", fontSize: "12px" }}
                         zIndex={999}
-                        icon={{ path: google.maps.SymbolPath.CIRCLE, scale: 18, fillColor: "#10b981", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 4 }}
+                        icon={{
+                            url: getMapIcon({ status: 'terrain', label: 'TER' }),
+                            scaledSize: new window.google.maps.Size(40, 48),
+                            anchor: new window.google.maps.Point(20, 48)
+                        }}
                     />
                 )}
 
@@ -169,10 +173,13 @@ export const MapDisplay = ({
                             {route.directions.routes[0]?.legs[0]?.end_location && (
                                 <Marker
                                     position={route.directions.routes[0].legs[0].end_location}
-                                    label={{ text: route.abbrev, color: "white", fontWeight: "bold", fontSize: "10px" }}
                                     zIndex={isActive ? 900 : (100 + index)}
                                     onClick={() => onRouteClick && onRouteClick(route.id)}
-                                    icon={{ path: google.maps.SymbolPath.CIRCLE, scale: 16, fillColor: route.color, fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 3 }}
+                                    icon={{
+                                        url: getMapIcon({ status: route.color === '#ef4444' ? 'fail' : 'success', label: route.abbrev }),
+                                        scaledSize: new window.google.maps.Size(40, 48),
+                                        anchor: new window.google.maps.Point(20, 48)
+                                    }}
                                 />
                             )}
                             <DirectionsRenderer

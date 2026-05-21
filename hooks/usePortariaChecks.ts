@@ -263,5 +263,10 @@ export const usePortariaChecks = () => {
         localStorage.removeItem('enquadramap_checklist');
     };
 
-    return { checklist, updateCheckResult, updateManualStatus, resetChecklist };
+    const loadChecklist = (loadedChecklist: CheckItem[]) => {
+        setChecklist(loadedChecklist);
+        localStorage.setItem('enquadramap_checklist', JSON.stringify(loadedChecklist));
+    };
+
+    return { checklist, updateCheckResult, updateManualStatus, resetChecklist, loadChecklist };
 };

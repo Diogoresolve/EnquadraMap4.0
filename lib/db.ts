@@ -26,11 +26,20 @@ export const sql = neon(connectionString)
 
 export interface Vistoria {
   id: string
+  // Identificação do empreendimento
+  nome: string
+  promotor: string
+  num_unidades: string
+  programa: string
+  /** Chave de reconciliação com o sistema de compliance / parecer final */
+  numero_chamado: string
+  // Localização
   endereco: string
   latitude: number
   longitude: number
   payload: Record<string, unknown>
   criado_em: string
+  atualizado_em: string
 }
 
 export interface VistoriaFoto {
@@ -59,15 +68,26 @@ export async function getVistoriaById(id: string): Promise<Vistoria | null> {
  */
 export async function createVistoria(dados: {
   id: string             // nanoid gerado no servidor
+  nome: string
+  promotor: string
+  num_unidades: string
+  programa: string
+  numero_chamado: string
   endereco: string
   latitude: number
   longitude: number
   payload: object
 }): Promise<Vistoria> {
   const rows = await sql`
-    INSERT INTO vistorias (id, endereco, latitude, longitude, payload)
+    INSERT INTO vistorias
+      (id, nome, promotor, num_unidades, programa, numero_chamado, endereco, latitude, longitude, payload)
     VALUES (
       ${dados.id},
+      ${dados.nome},
+      ${dados.promotor},
+      ${dados.num_unidades},
+      ${dados.programa},
+      ${dados.numero_chamado},
       ${dados.endereco},
       ${dados.latitude},
       ${dados.longitude},
@@ -80,15 +100,31 @@ export async function createVistoria(dados: {
 
 /**
  * Lista vistorias mais recentes para o painel do escritório
+ * Aceita filtro opcional por numero_chamado (para integração compliance)
  */
-export async function listVistorias(limit = 50): Promise<Vistoria[]> {
+export async function listVistorias(
+  limit = 50,
+  filtroChamado?: string
+): Promise<Omit<Vistoria, 'payload'>[]> {
+  if (filtroChamado) {
+    const rows = await sql`
+      SELECT id, nome, promotor, num_unidades, programa, numero_chamado,
+             endereco, latitude, longitude, criado_em, atualizado_em
+      FROM vistorias
+      WHERE numero_chamado ILIKE ${'%' + filtroChamado + '%'}
+      ORDER BY criado_em DESC
+      LIMIT ${limit}
+    `
+    return rows as Omit<Vistoria, 'payload'>[]
+  }
   const rows = await sql`
-    SELECT id, endereco, latitude, longitude, criado_em
+    SELECT id, nome, promotor, num_unidades, programa, numero_chamado,
+           endereco, latitude, longitude, criado_em, atualizado_em
     FROM vistorias
     ORDER BY criado_em DESC
     LIMIT ${limit}
   `
-  return rows as Vistoria[]
+  return rows as Omit<Vistoria, 'payload'>[]
 }
 
 /**

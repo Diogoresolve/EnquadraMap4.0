@@ -1,87 +1,235 @@
 @import "tailwindcss";
 
-@media print {
+/* ── Fontes ───────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-  /* Hide non-essential UI elements */
-  header,
-  form,
-  button:not(.print-visible),
-  .confirmation-modal,
-  .voice-controls {
-    display: none !important;
-  }
-
-  /* Reset layout for paper */
-  body,
-  main {
-    height: auto !important;
-    overflow: visible !important;
-    background: white !important;
-    color: black !important;
-  }
-
-  /* Map Container - Top Half */
-  .relative.flex-1 {
-    height: 50vh !important;
-    width: 100% !important;
-    position: relative !important;
-    border: 2px solid #ccc;
-  }
-
-  /* History List - Bottom Half */
-  .absolute.top-20.right-6 {
-    position: static !important;
-    width: 100% !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin-top: 20px;
-    display: block !important;
-  }
-
-  /* Cards Styling for Print */
-  .backdrop-blur-md {
-    backdrop-filter: none !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-    color: black !important;
-    box-shadow: none !important;
-    margin-bottom: 10px;
-  }
-
-  /* Text Colors for Print */
-  .text-white,
-  .text-gray-200,
-  .text-gray-300,
-  .text-gray-400 {
-    color: black !important;
-  }
-
-  /* Hide scrollbars */
-  * {
-    -ms-overflow-style: none !important;
-    scrollbar-width: none !important;
-  }
-}
-
+/* ── Design tokens ────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-deep:     #030712;
+  --bg-card:     rgba(10, 18, 40, 0.75);
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(52, 211, 153, 0.35);
+  --emerald:     #34d399;
+  --cyan:        #22d3ee;
+  --blue:        #60a5fa;
+  --foreground:  #f1f5f9;
 }
 
-@theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: var(--background);
+  background: var(--bg-deep);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', 'Geist', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+/* ── Keyframes: orbs flutuantes ───────────────────────────── */
+@keyframes orb1 {
+  0%,100% { transform: translate(0,0)    scale(1); }
+  33%     { transform: translate(40px,-50px) scale(1.08); }
+  66%     { transform: translate(-30px,30px) scale(0.94); }
+}
+@keyframes orb2 {
+  0%,100% { transform: translate(0,0)    scale(1); }
+  33%     { transform: translate(-60px,40px) scale(1.05); }
+  66%     { transform: translate(50px,-20px) scale(0.97); }
+}
+@keyframes orb3 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%     { transform: translate(30px,60px) scale(1.1); }
+}
+
+/* ── Keyframes: aparição suave ────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Keyframes: slide das telas ───────────────────────────── */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Keyframes: pulse do radar ────────────────────────────── */
+@keyframes radar-ring {
+  0%   { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes radar-dot {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.4; }
+}
+
+/* ── Keyframes: shimmer no botão ──────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ── Keyframes: pulse do anel de foco ─────────────────────── */
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0px rgba(52,211,153,0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(52,211,153,0); }
+}
+
+/* ── Utility classes de animação ──────────────────────────── */
+.animate-orb1 { animation: orb1 12s ease-in-out infinite; }
+.animate-orb2 { animation: orb2 15s ease-in-out infinite; }
+.animate-orb3 { animation: orb3 10s ease-in-out infinite; }
+
+.animate-fade-up   { animation: fade-up  0.55s cubic-bezier(.22,1,.36,1) both; }
+.animate-fade-in   { animation: fade-in  0.4s ease both; }
+.animate-slide-right { animation: slide-in-right 0.45s cubic-bezier(.22,1,.36,1) both; }
+.animate-slide-left  { animation: slide-in-left  0.45s cubic-bezier(.22,1,.36,1) both; }
+
+/* ── Glassmorphism card ───────────────────────────────────── */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--border-soft);
+  border-radius: 1.25rem;
+}
+.glass-card-glow {
+  border-color: var(--border-glow);
+  box-shadow: 0 0 0 1px rgba(52,211,153,0.12), 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* ── Input premium ────────────────────────────────────────── */
+.input-premium {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0.75rem;
+  color: #f1f5f9;
+  font-size: 0.9375rem;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  font-family: inherit;
+}
+.input-premium::placeholder { color: rgba(255,255,255,0.22); }
+.input-premium:focus {
+  border-color: rgba(52,211,153,0.55);
+  box-shadow: 0 0 0 3px rgba(52,211,153,0.12);
+  background: rgba(255,255,255,0.06);
+}
+
+/* ── Select premium ───────────────────────────────────────── */
+.select-premium {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  padding-right: 2.5rem !important;
+}
+
+/* ── Botão CTA principal ──────────────────────────────────── */
+.btn-cta {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #059669, #0891b2);
+  border: none;
+  border-radius: 0.875rem;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  font-family: inherit;
+}
+.btn-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 200% auto;
+  animation: shimmer 2.5s linear infinite;
+}
+.btn-cta:hover  { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(5,150,105,0.4); }
+.btn-cta:active { transform: translateY(0); }
+
+/* ── Radar pulsante ───────────────────────────────────────── */
+.radar-ring {
+  animation: radar-ring 1.8s ease-out infinite;
+}
+.radar-ring:nth-child(2) { animation-delay: 0.6s; }
+.radar-ring:nth-child(3) { animation-delay: 1.2s; }
+
+/* ── Step indicator ───────────────────────────────────────── */
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transition: all 0.3s;
+}
+.step-dot.active {
+  width: 24px;
+  border-radius: 4px;
+  background: var(--emerald);
+}
+.step-dot.done {
+  background: rgba(52,211,153,0.45);
+}
+
+/* ── Suggestion card ──────────────────────────────────────── */
+.suggestion-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+  animation: fade-up 0.3s both;
+}
+.suggestion-card:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(52,211,153,0.3);
+  transform: translateY(-1px);
+}
+
+/* ── Barra de progresso da análise ───────────────────────── */
+.progress-bar-fill {
+  background: linear-gradient(90deg, #059669, #0891b2);
+  transition: width 0.6s cubic-bezier(.22,1,.36,1);
+}
+
+/* ── Scrollbar fina ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+/* ── Print ────────────────────────────────────────────────── */
+@media print {
+  header, form, button:not(.print-visible),
+  .confirmation-modal, .voice-controls { display: none !important; }
+  body, main {
+    height: auto !important; overflow: visible !important;
+    background: white !important; color: black !important;
+  }
+  .relative.flex-1 {
+    height: 50vh !important; width: 100% !important;
+    position: relative !important; border: 2px solid #ccc;
+  }
+  .backdrop-blur-md {
+    backdrop-filter: none !important; background: white !important;
+    border: 1px solid #ddd !important; color: black !important;
+    box-shadow: none !important; margin-bottom: 10px;
+  }
+  .text-white, .text-gray-200, .text-gray-300, .text-gray-400 { color: black !important; }
+  * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
 }

@@ -4,6 +4,7 @@ import React from 'react';
 import { CheckItem } from '../hooks/usePortariaChecks';
 import { CheckCircle2, XCircle, Footprints, Bus, Clock, Download } from 'lucide-react';
 import { GoogleMap, MarkerF } from '@react-google-maps/api';
+import { getMapIcon } from '../utils/mapIcons';
 
 type LatLng = { lat: number; lng: number };
 
@@ -220,28 +221,23 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                         <MarkerF
                                             position={origin}
                                             icon={{
-                                                url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
-                                                scaledSize: new window.google.maps.Size(40, 40)
+                                                url: getMapIcon({ status: 'terrain', label: 'TER' }),
+                                                scaledSize: new window.google.maps.Size(40, 48),
+                                                anchor: new window.google.maps.Point(20, 48)
                                             }}
                                         />
                                     )}
                                     {Object.entries(checkLocations || {}).map(([id, loc]) => {
                                         const item = checklist.find(i => i.id === id);
                                         if (!item || item.status === 'pending') return null;
-                                        const iconUrl = item.status === 'success' ? 'go.png' : 'stop.png';
                                         return (
                                             <MarkerF
                                                 key={id}
                                                 position={loc}
                                                 icon={{
-                                                    url: `http://maps.google.com/mapfiles/kml/paddle/${iconUrl}`,
-                                                    scaledSize: new window.google.maps.Size(32, 32)
-                                                }}
-                                                label={{
-                                                    text: item.abbrev || item.label.substring(0, 1),
-                                                    color: '#000',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '10px'
+                                                    url: getMapIcon({ status: item.status, label: item.abbrev || item.label.substring(0, 1) }),
+                                                    scaledSize: new window.google.maps.Size(40, 48),
+                                                    anchor: new window.google.maps.Point(20, 48)
                                                 }}
                                             />
                                         );
@@ -360,7 +356,8 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                     </div>
                 </div>
             </div>
-
+            </div>
+            
             {/* ══ CSS DE IMPRESSÃO ══ */}
             <style>{`
                 @media print {

@@ -2,43 +2,19 @@
 
 import React, { useCallback, useState } from 'react';
 import { useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Loader2, PenLine, X, RotateCcw, FileText } from 'lucide-react';
+import { MapPin, Loader2, PenLine, X, RotateCcw, FileText, Download, Upload, Link2, Check, Copy } from 'lucide-react';
 import { useGoogleMapsLogic } from '../hooks/useGoogleMapsLogic';
 import { MapDisplay, RouteData } from '../components/MapDisplay';
 import { usePortariaChecks, CheckItem } from '../hooks/usePortariaChecks';
 import { AnalysisSidebar } from '../components/AnalysisSidebar';
 import { PrintReport } from '../components/PrintReport';
+import { OnboardingFlow, ProjetoInfo } from '../components/OnboardingFlow';
 
 const LIBRARIES: ("places" | "geometry" | "drawing" | "visualization")[] = ["places", "drawing", "geometry"];
 
-// ─── Filtro de escolas públicas ───────────────────────────────────────────────
-// IDs dos itens de educação que devem exibir somente escolas/creches públicas
-const EDUCATION_PUBLIC_IDS = new Set(['school_creche', 'school_fund1', 'school_fund2']);
-
-// Siglas e padrões de nome de escolas públicas brasileiras
-const PUBLIC_SCHOOL_PATTERNS = [
-  'EMEI', 'EMEF', 'EMEB', 'EMEIF', 'EMEJA',
-  'CMEI', 'CEI', 'CEU', 'CEJA',
-  'E.E.', 'E. E.',
-  'ESCOLA ESTADUAL', 'ESCOLA MUNICIPAL',
-  'CRECHE MUNICIPAL', 'CRECHE PÚBLICA', 'CRECHE PUBLICA',
-  'ESCOLA PÚBLICA', 'ESCOLA PUBLICA',
-  'MUNICIPAL DE EDUCA', 'ESTADUAL DE EDUCA',
-];
-
-const isPublicSchool = (name: string): boolean => {
-  const upper = name.toUpperCase();
-  return PUBLIC_SCHOOL_PATTERNS.some(p => upper.includes(p));
-};
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LatLng = { lat: number; lng: number };
-
-interface PlaceSuggestion {
-  name: string;
-  address: string;
-  location: LatLng;
-}
+interface PlaceSuggestion { name: string; address: string; location: LatLng; }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function Home() {
@@ -49,20 +25,42 @@ export default function Home() {
   });
 
   const { geocodeAddress, getRoute } = useGoogleMapsLogic(isLoaded);
-  const { checklist, updateCheckResult, updateManualStatus, resetChecklist } = usePortariaChecks();
+  const { checklist, updateCheckResult, updateManualStatus, resetChecklist, loadChecklist } = usePortariaChecks();
 
-  // ── Terrain / Origin state ──────────────────────────────────────────────
+  // ── Onboarding state ────────────────────────────────────────────────────────
+  const [appPhase, setAppPhase] = useState<'onboarding' | 'editor'>('onboarding');
+  const [projetoInfo, setProjetoInfo] = useState<ProjetoInfo>({
+    nome: '', promotor: '', numUnidades: '', programa: '', numeroChamado: '',
+  });
+
+  // ── Terrain / Origin state ──────────────────────────────────────────────────
   const [origin, setOrigin] = useState<LatLng | null>(null);
   const [originAddress, setOriginAddress] = useState<string>('');
   const [polygonPath, setPolygonPath] = useState<LatLng[] | undefined>(undefined);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
 
-  // ── Routes / check state ───────────────────────────────────────────────
+  // ── Routes / check state ────────────────────────────────────────────────────
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
   const [activeCheckId, setActiveCheckId] = useState<string | null>(null);
 
-  // ── Compute true center of the polygon ───────────────────────────────────
+  // ── Vistoria salva ──────────────────────────────────────────────────────────
+  const [vistoriaId, setVistoriaId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [vistoriaLink, setVistoriaLink] = useState('');
+
+  // ── Other state ─────────────────────────────────────────────────────────────
+  const [textInput, setTextInput] = useState('');
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [checkLocations, setCheckLocations] = useState<Record<string, LatLng>>({});
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ── Polygon center ──────────────────────────────────────────────────────────
   const polygonCenter = React.useMemo(() => {
     if (polygonPath && polygonPath.length > 0 && typeof window !== 'undefined' && window.google) {
       const bounds = new window.google.maps.LatLngBounds();
@@ -72,32 +70,84 @@ export default function Home() {
     return origin;
   }, [polygonPath, origin]);
 
-  // ── Text input ──────────────────────────────────────────────────────────
-  const [textInput, setTextInput] = useState('');
+  // ─── Onboarding complete → entra no editor ────────────────────────────────
 
-  // ── Places auto-suggestions ─────────────────────────────────────────────
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const handleOnboardingComplete = useCallback((
+    projeto: ProjetoInfo,
+    loc: LatLng,
+    address: string
+  ) => {
+    setProjetoInfo(projeto);
+    setOrigin(loc);
+    setOriginAddress(address);
+    setAppPhase('editor');
+  }, []);
 
-  // ── Confirmation modal ──────────────────────────────────────────────────
-  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  // ─── Gerar / copiar link de vistoria ─────────────────────────────────────
 
-  // ── Print Report ──────────────────────────────────────────────────
-  const [showReport, setShowReport] = useState(false);
-  // Coordenadas de cada item verificado (para exportar KML)
-  const [checkLocations, setCheckLocations] = useState<Record<string, LatLng>>({});
+  const handleGerarLink = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        projetoInfo,
+        checklist,
+        polygonPath,
+        checkLocations,
+      };
+      const endpoint = vistoriaId ? `/api/vistorias/${vistoriaId}` : '/api/vistorias';
+      const method = vistoriaId ? 'PATCH' : 'POST';
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: projetoInfo.nome,
+          promotor: projetoInfo.promotor,
+          numUnidades: projetoInfo.numUnidades,
+          programa: projetoInfo.programa,
+          numeroChamado: projetoInfo.numeroChamado,
+          endereco: originAddress,
+          latitude: origin?.lat ?? 0,
+          longitude: origin?.lng ?? 0,
+          payload,
+        }),
+      });
 
-  /** Find the polygon vertex closest to a target location (for 'edge' measurement) */
+      const data = await res.json();
+
+      if (method === 'POST' && data.id) {
+        setVistoriaId(data.id);
+        const fullLink = `${window.location.origin}/v/${data.id}`;
+        setVistoriaLink(fullLink);
+        setShowLinkModal(true);
+      } else if (method === 'PATCH' && data.ok) {
+        // Análise atualizada — apenas toast
+        setVistoriaLink(`${window.location.origin}/v/${vistoriaId}`);
+        setShowLinkModal(true);
+      }
+    } catch (e) {
+      console.error('Erro ao salvar vistoria:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(vistoriaLink).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    });
+  };
+
+  // ─── Helpers de rota ─────────────────────────────────────────────────────
+
   const getOriginForCheck = useCallback((checkItem: CheckItem, targetLoc: LatLng): LatLng | null => {
     if (polygonPath && checkItem.measurementPoint === 'edge' && window.google) {
       let closestVertex = polygonPath[0];
       let minDist = Number.MAX_VALUE;
       polygonPath.forEach(vertex => {
         const dist = google.maps.geometry.spherical.computeDistanceBetween(
-          new google.maps.LatLng(vertex),
-          new google.maps.LatLng(targetLoc)
+          new google.maps.LatLng(vertex), new google.maps.LatLng(targetLoc)
         );
         if (dist < minDist) { minDist = dist; closestVertex = vertex; }
       });
@@ -106,44 +156,27 @@ export default function Home() {
     return polygonCenter;
   }, [polygonPath, polygonCenter]);
 
-  /** Color the route line based on compliance result */
   const getCheckColor = (item: CheckItem, result: { distanceValue: number; durationValue: number }, mode: 'WALKING' | 'TRANSIT') => {
     let isValid = false;
     if (mode === 'WALKING' && item.maxDistanceWalk && result.distanceValue <= item.maxDistanceWalk) isValid = true;
     if (mode === 'TRANSIT' && item.maxTimeTransport && (result.durationValue / 60) <= item.maxTimeTransport) isValid = true;
-
     if (!isValid) return "#ef4444";
     return item.category === 'Infraestrutura' ? "#0ea5e9" : "#10b981";
   };
 
-  /** Calculate and store the route for a check item */
-  const computeCheckRoute = useCallback(async (
-    checkItem: CheckItem,
-    targetLocation: LatLng,
-    targetAddress: string
-  ) => {
+  const computeCheckRoute = useCallback(async (checkItem: CheckItem, targetLocation: LatLng, targetAddress: string) => {
     const startPoint = getOriginForCheck(checkItem, targetLocation);
     if (!startPoint) return;
-
     let routeResult = await getRoute(startPoint, targetLocation, 'WALKING');
     let modeUsed: 'WALKING' | 'TRANSIT' = 'WALKING';
-
     if (!routeResult) return;
-
-    // Auto-fallback to Transit if walking exceeds limit and transit is allowed
     if (checkItem.maxDistanceWalk && routeResult.distanceValue > checkItem.maxDistanceWalk && checkItem.maxTimeTransport) {
       const transitResult = await getRoute(startPoint, targetLocation, 'TRANSIT');
-      if (transitResult) { 
-        // Só substitui para mostrar a rota de ônibus no UI se o ônibus efetivamente PASSAR no teste.
-        // Se ambos falharem, mostrar a rota a pé é muito mais intuitivo para o usuário entender o porquê falhou.
+      if (transitResult) {
         const transitPasses = (transitResult.durationValue / 60) <= checkItem.maxTimeTransport;
-        if (transitPasses) {
-          routeResult = transitResult; 
-          modeUsed = 'TRANSIT'; 
-        }
+        if (transitPasses) { routeResult = transitResult; modeUsed = 'TRANSIT'; }
       }
     }
-
     const color = getCheckColor(checkItem, routeResult, modeUsed);
     const newRoute: RouteData = {
       id: `check-${checkItem.id}`,
@@ -154,7 +187,6 @@ export default function Home() {
       note: `${modeUsed === 'WALKING' ? 'A pé' : 'Ônibus'} • ${checkItem.measurementPoint === 'edge' ? 'Borda' : 'Centro'} • ${routeResult.distanceText}`,
       abbrev: checkItem.abbrev,
     };
-
     updateCheckResult(checkItem.id, {
       distanceValue: routeResult.distanceValue,
       durationValue: routeResult.durationValue,
@@ -163,11 +195,7 @@ export default function Home() {
       address: targetAddress,
       mode: modeUsed,
     });
-
-    setRoutes(prev => {
-      const filtered = prev.filter(r => r.id !== newRoute.id);
-      return [...filtered, newRoute];
-    });
+    setRoutes(prev => [...prev.filter(r => r.id !== newRoute.id), newRoute]);
     setActiveRouteId(newRoute.id);
     setCheckLocations(prev => ({ ...prev, [checkItem.id]: targetLocation }));
     setActiveCheckId(null);
@@ -175,51 +203,37 @@ export default function Home() {
     setTextInput('');
   }, [getOriginForCheck, getRoute, updateCheckResult]);
 
-  // ─── Places Auto-Search ───────────────────────────────────────────────────
+  // ─── Places Search ────────────────────────────────────────────────────────
 
-  /** Search nearby places when user selects a check item */
   const searchNearbyPlaces = useCallback(async (checkItem: CheckItem) => {
     if (!polygonCenter || !isLoaded || !window.google) return;
     if (!checkItem.searchKeyword) return;
-
     setIsSearching(true);
     setSuggestions([]);
-
     const service = new window.google.maps.places.PlacesService(document.createElement('div'));
-    
     const request: google.maps.places.PlaceSearchRequest = {
       location: polygonCenter,
       keyword: checkItem.searchKeyword,
       rankBy: window.google.maps.places.RankBy.DISTANCE,
     };
-
-    // Timeout de segurança: garante que o spinner sempre some
     const searchTimeout = setTimeout(() => setIsSearching(false), 10_000);
-
     service.nearbySearch(request, (results, status) => {
       clearTimeout(searchTimeout);
       setIsSearching(false);
-
       if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-        
-        // Guarda contra resultados sem geometria e extrai os 4 mais próximos
         const topResults: PlaceSuggestion[] = results
           .filter(p => p.geometry?.location != null)
           .slice(0, 4)
           .map(p => ({
             name: p.name || 'Local',
             address: p.formatted_address || p.vicinity || '',
-            location: {
-              lat: p.geometry!.location!.lat(),
-              lng: p.geometry!.location!.lng(),
-            }
+            location: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() },
           }));
         setSuggestions(topResults);
       }
     });
   }, [origin, isLoaded, polygonPath, getOriginForCheck]);
 
-  /** Called when user clicks an item in AnalysisSidebar */
   const handleItemSelect = useCallback((id: string) => {
     setActiveCheckId(id);
     setIsDrawingMode(false);
@@ -234,7 +248,6 @@ export default function Home() {
   const handleTextSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!textInput.trim()) return;
-
     if (activeCheckId) {
       const checkItem = checklist.find(i => i.id === activeCheckId);
       if (!checkItem || !origin) return;
@@ -253,7 +266,7 @@ export default function Home() {
     }
   };
 
-  // ─── Map Click Handler ────────────────────────────────────────────────────
+  // ─── Map Click ────────────────────────────────────────────────────────────
 
   const handleMapClick = async (lat: number, lng: number) => {
     if (!window.google) return;
@@ -267,7 +280,6 @@ export default function Home() {
   const confirmLocation = async (andDraw = false) => {
     if (!pendingLocation) return;
     const { lat, lng, address } = pendingLocation;
-
     if (activeCheckId && origin) {
       const checkItem = checklist.find(i => i.id === activeCheckId);
       if (checkItem) await computeCheckRoute(checkItem, { lat, lng }, address);
@@ -282,7 +294,7 @@ export default function Home() {
     setPendingLocation(null);
   };
 
-  // ─── Suggestion Click ─────────────────────────────────────────────────────
+  // ─── Suggestion / Polygon / Clear / Save ─────────────────────────────────
 
   const handleSuggestionClick = async (suggestion: PlaceSuggestion) => {
     if (!activeCheckId) return;
@@ -291,12 +303,9 @@ export default function Home() {
     await computeCheckRoute(checkItem, suggestion.location, `${suggestion.name} — ${suggestion.address}`);
   };
 
-  // ─── Polygon Drawing ──────────────────────────────────────────────────────
-
   const handlePolygonComplete = (path: LatLng[]) => {
     setPolygonPath(path);
     setIsDrawingMode(false);
-
     if (!origin) {
       const lat = path.reduce((s, p) => s + p.lat, 0) / path.length;
       const lng = path.reduce((s, p) => s + p.lng, 0) / path.length;
@@ -308,75 +317,183 @@ export default function Home() {
     resetChecklist();
   };
 
-  // ─── Clear All ────────────────────────────────────────────────────────────
-
   const clearAll = () => {
     setOrigin(null); setOriginAddress('');
     setPolygonPath(undefined); setIsDrawingMode(false);
     setRoutes([]); setActiveCheckId(null); setActiveRouteId(null);
     setSuggestions([]); setTextInput('');
     setCheckLocations({});
+    setVistoriaId(null);
     resetChecklist();
+    setAppPhase('onboarding');
+  };
+
+  const handleSaveProject = () => {
+    const projectData = { projetoInfo, origin, originAddress, polygonPath, checklist, checkLocations };
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EnquadraMap_${projetoInfo.nome || originAddress.substring(0, 15).trim()}.json`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        if (data.checklist) {
+          setProjetoInfo(data.projetoInfo || { nome: '', promotor: '', numUnidades: '', programa: '', numeroChamado: '' });
+          setOrigin(data.origin || null);
+          setOriginAddress(data.originAddress || '');
+          setPolygonPath(data.polygonPath || undefined);
+          loadChecklist(data.checklist);
+          setRoutes([]);
+          setCheckLocations(data.checkLocations || {});
+          setIsDrawingMode(false);
+          setActiveCheckId(null);
+          setActiveRouteId(null);
+          setSuggestions([]);
+          setTextInput('');
+          setAppPhase('editor');
+        }
+      } catch { alert("Erro ao carregar projeto. Arquivo inválido."); }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // ─── Loading screen ───────────────────────────────────────────────────────
 
   if (!isLoaded) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-900 text-white">
-        <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
-        <span className="ml-4 text-xl">Carregando Mapa...</span>
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-950 text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-2 border-emerald-500/20" />
+            <div className="absolute inset-0 rounded-full border-t-2 border-emerald-400 animate-spin" />
+          </div>
+          <div className="text-center">
+            <p className="text-white font-semibold">EnquadraMap 4.0</p>
+            <p className="text-gray-500 text-sm mt-1">Carregando mapa...</p>
+          </div>
+        </div>
       </div>
     );
   }
+
+  // ─── Onboarding phase ──────────────────────────────────────────────────────
+
+  if (appPhase === 'onboarding') {
+    return (
+      <main className="min-h-screen bg-[#030712]">
+        <OnboardingFlow
+          isMapLoaded={isLoaded}
+          onComplete={handleOnboardingComplete}
+        />
+      </main>
+    );
+  }
+
+  // ─── Editor phase ─────────────────────────────────────────────────────────
 
   const activeCheckItem = checklist.find(i => i.id === activeCheckId);
 
   return (
     <main className="flex h-screen w-screen flex-col bg-gray-950 text-white font-sans overflow-hidden">
 
-      <header className="absolute top-0 left-0 z-10 w-full px-6 pt-5 pb-3 bg-gradient-to-b from-black/80 to-transparent pointer-events-none flex justify-between items-start gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
-            EnquadraMap
-          </h1>
-          <p className="text-[10px] text-gray-500 mt-0.5">Portaria MCID Nº 725/2023</p>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <header className="absolute top-0 left-0 z-10 w-full px-5 pt-4 pb-3 bg-gradient-to-b from-black/85 to-transparent pointer-events-none flex justify-between items-start gap-4">
+        <div className="flex flex-col gap-2">
+          {/* Logo + projeto info */}
+          <div className="flex items-center gap-2.5">
+            <div>
+              <h1 className="text-xl font-black tracking-tight"
+                style={{ background: "linear-gradient(135deg,#f1f5f9,#34d399,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                EnquadraMap
+              </h1>
+              <p className="text-[9px] text-gray-600 mt-0 leading-none">Portaria MCID 725/2023</p>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-[10px] font-bold">4.0</span>
+          </div>
+
+          {/* Nome do empreendimento */}
+          {projetoInfo.nome && (
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <div className="bg-black/60 backdrop-blur rounded-lg border border-white/8 px-3 py-1.5">
+                <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold leading-none mb-0.5">Empreendimento</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-white">{projetoInfo.nome}</p>
+                  {projetoInfo.programa && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
+                      {projetoInfo.programa}
+                    </span>
+                  )}
+                  {projetoInfo.numeroChamado && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold">
+                      {projetoInfo.numeroChamado}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Carregar projeto */}
+          <div className="pointer-events-auto">
+            <input type="file" accept=".json" ref={fileInputRef} onChange={handleLoadProject} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1.5 font-bold px-2 py-1 bg-white/5 rounded-lg border border-white/8 hover:bg-white/10 transition-all">
+              <Upload className="w-3 h-3" /> Carregar
+            </button>
+          </div>
         </div>
 
+        {/* Action bar quando terreno definido */}
         {originAddress && (
-          <div className="pointer-events-auto bg-black/60 backdrop-blur rounded-xl border border-white/10 px-4 py-2.5 flex items-center gap-3">
-            <div>
+          <div className="pointer-events-auto bg-black/65 backdrop-blur rounded-xl border border-white/10 px-4 py-2.5 flex items-center gap-2.5">
+            <div className="mr-1">
               <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Terreno</p>
-              <p className="text-sm font-semibold text-white max-w-[220px] truncate">{originAddress}</p>
+              <p className="text-sm font-semibold text-white max-w-[180px] truncate">{originAddress}</p>
             </div>
-            <button
-              onClick={() => setIsDrawingMode(v => !v)}
-              title={isDrawingMode ? "Cancelar desenho" : "Redesenhar polígono do terreno"}
+
+            <button onClick={handleSaveProject} title="Salvar Projeto"
+              className="p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/35 text-emerald-400 transition-all flex items-center gap-1.5 text-xs font-bold">
+              <Download className="w-3.5 h-3.5" /> JSON
+            </button>
+
+            <button onClick={() => setIsDrawingMode(v => !v)}
               className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all
-                ${isDrawingMode ? 'bg-yellow-500 text-black animate-pulse' : 'bg-white/10 hover:bg-white/20 text-gray-300'}`}
-            >
-              <PenLine className="w-4 h-4" />
+                ${isDrawingMode ? 'bg-yellow-500 text-black animate-pulse' : 'bg-white/8 hover:bg-white/16 text-gray-300'}`}>
+              <PenLine className="w-3.5 h-3.5" />
               {isDrawingMode ? 'Desenhando...' : 'Polígono'}
             </button>
-            <button
-              onClick={() => setShowReport(true)}
-              title="Gerar relatório PDF"
-              className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 transition-all flex items-center gap-1.5 text-xs font-bold"
-            >
-              <FileText className="w-4 h-4" />
-              PDF
+
+            <button onClick={() => setShowReport(true)} title="Gerar relatório PDF"
+              className="p-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/35 text-blue-400 transition-all flex items-center gap-1.5 text-xs font-bold">
+              <FileText className="w-3.5 h-3.5" /> PDF
             </button>
-            <button
-              onClick={clearAll}
-              title="Limpar tudo e recomeçar"
-              className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-500 transition-all"
-            >
-              <RotateCcw className="w-4 h-4" />
+
+            {/* Botão Gerar Link / Atualizar */}
+            <button onClick={handleGerarLink} disabled={isSaving}
+              className="p-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/35 text-purple-400 transition-all flex items-center gap-1.5 text-xs font-bold disabled:opacity-50">
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+              {vistoriaId ? 'Atualizar' : 'Gerar Link'}
+            </button>
+
+            <button onClick={clearAll} title="Recomeçar"
+              className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-500 transition-all">
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
       </header>
 
+      {/* ── Mapa + overlays ─────────────────────────────────────────────────── */}
       <div className="relative flex-1 w-full h-full">
         <MapDisplay
           origin={origin}
@@ -390,6 +507,7 @@ export default function Home() {
           onPolygonComplete={handlePolygonComplete}
         />
 
+        {/* ── Search / Active check box ──────────────────────────────────── */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4 pointer-events-auto space-y-2">
           {activeCheckId && activeCheckItem ? (
             <div className="bg-black/85 backdrop-blur-xl border border-blue-500/40 rounded-2xl shadow-2xl overflow-hidden">
@@ -402,7 +520,7 @@ export default function Home() {
                   <p className="text-white text-sm font-semibold leading-tight">{activeCheckItem.label}</p>
                 </div>
                 <p className="text-[10px] text-gray-500 shrink-0">
-                  Limite: {activeCheckItem.maxDistanceWalk ? `${activeCheckItem.maxDistanceWalk / 1000}km` : ''}
+                  {activeCheckItem.maxDistanceWalk ? `${activeCheckItem.maxDistanceWalk / 1000}km` : ''}
                   {activeCheckItem.maxTimeTransport ? ` / ${activeCheckItem.maxTimeTransport}min ônibus` : ''}
                 </p>
                 <button onClick={() => { setActiveCheckId(null); setSuggestions([]); }} className="text-gray-500 hover:text-white">
@@ -415,15 +533,14 @@ export default function Home() {
                   <Loader2 className="w-4 h-4 animate-spin" /> Buscando mais próximos...
                 </div>
               )}
+
               {suggestions.length > 0 && !isSearching && (
                 <div className="px-2 pt-1 pb-2 space-y-1">
                   <p className="text-[9px] text-gray-600 uppercase tracking-widest px-2 pt-1">Sugestões próximas</p>
                   {suggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSuggestionClick(s)}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-white/5 hover:bg-white/15 transition-all flex flex-col group"
-                    >
+                    <button key={i} onClick={() => handleSuggestionClick(s)}
+                      className="suggestion-card w-full text-left flex flex-col group"
+                      style={{ animationDelay: `${i * 0.07}s` }}>
                       <span className="text-white text-sm font-semibold group-hover:text-blue-300">{s.name}</span>
                       <span className="text-gray-500 text-xs truncate">{s.address}</span>
                     </button>
@@ -432,13 +549,9 @@ export default function Home() {
               )}
 
               <form onSubmit={handleTextSubmit} className="flex items-center gap-2 px-3 pb-3">
-                <input
-                  autoFocus
-                  value={textInput}
-                  onChange={e => setTextInput(e.target.value)}
+                <input autoFocus value={textInput} onChange={e => setTextInput(e.target.value)}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"
-                  placeholder="Ou busque manualmente..."
-                />
+                  placeholder="Ou busque manualmente..." />
                 <button type="submit" className="px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-white text-sm font-bold transition-all">
                   Ir
                 </button>
@@ -447,15 +560,10 @@ export default function Home() {
           ) : !origin ? (
             <div className="bg-gray-900/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
               <form onSubmit={handleTextSubmit} className="flex items-center gap-2 p-3">
-                <input
-                  value={textInput}
-                  onChange={e => setTextInput(e.target.value)}
+                <input value={textInput} onChange={e => setTextInput(e.target.value)}
                   className="flex-1 bg-transparent text-lg text-white px-2 focus:outline-none placeholder-gray-600"
-                  placeholder="Digite o endereço do terreno..."
-                />
-                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white text-sm font-bold">
-                  Confirmar
-                </button>
+                  placeholder="Digite o endereço do terreno..." />
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white text-sm font-bold">Confirmar</button>
               </form>
               <div className="px-4 pb-3 flex items-center gap-2 text-gray-600 text-xs">
                 <span>ou</span>
@@ -479,6 +587,7 @@ export default function Home() {
           )}
         </div>
 
+        {/* ── Pending location modal ────────────────────────────────────────── */}
         {pendingLocation && (
           <div className="absolute inset-x-0 top-28 mx-auto z-50 w-80 bg-black/90 backdrop-blur-md border border-white/20 rounded-xl p-4 shadow-2xl flex flex-col gap-3 pointer-events-auto">
             {!origin ? (
@@ -486,14 +595,12 @@ export default function Home() {
                 <h3 className="text-white font-bold text-sm">Definir centro do terreno?</h3>
                 <p className="text-gray-300 text-xs leading-relaxed">{pendingLocation.address}</p>
                 <button onClick={() => confirmLocation(true)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-bold transition-all flex items-center justify-center gap-2">
-                  <PenLine className="w-4 h-4" /> Confirmar centro + Desenhar Polígono
+                  <PenLine className="w-4 h-4" /> Confirmar + Desenhar Polígono
                 </button>
                 <button onClick={() => confirmLocation(false)} className="w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-xs transition-all">
                   Confirmar apenas como centro
                 </button>
-                <button onClick={() => setPendingLocation(null)} className="text-gray-600 hover:text-gray-400 text-xs text-center">
-                  Cancelar
-                </button>
+                <button onClick={() => setPendingLocation(null)} className="text-gray-600 hover:text-gray-400 text-xs text-center">Cancelar</button>
               </>
             ) : (
               <>
@@ -508,6 +615,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* ── Analysis Sidebar ──────────────────────────────────────────────── */}
         {origin && (
           <div className="absolute top-20 right-0 h-[calc(100vh-80px)] pointer-events-auto">
             <AnalysisSidebar
@@ -521,6 +629,64 @@ export default function Home() {
         )}
       </div>
 
+      {/* ── Modal: Link de vistoria gerado ───────────────────────────────────── */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="glass-card glass-card-glow w-full max-w-md mx-4 p-7 animate-fade-up">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                <Link2 className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {vistoriaId ? 'Análise Atualizada' : 'Link de Vistoria Criado'}
+                </h2>
+                <p className="text-xs text-gray-500">Compartilhe com o vistoriador em campo</p>
+              </div>
+            </div>
+
+            {/* Info do projeto */}
+            <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-4 space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Empreendimento</span>
+                <span className="text-white font-medium">{projetoInfo.nome}</span>
+              </div>
+              {projetoInfo.numeroChamado && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Nº Chamado</span>
+                  <span className="text-amber-400 font-bold">{projetoInfo.numeroChamado}</span>
+                </div>
+              )}
+              {projetoInfo.programa && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Programa</span>
+                  <span className="text-emerald-400">{projetoInfo.programa}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Link */}
+            <div className="flex items-center gap-2 mb-5">
+              <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-gray-300 truncate font-mono">
+                {vistoriaLink}
+              </div>
+              <button onClick={copyLink}
+                className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5
+                  ${linkCopied ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/30' : 'bg-white/8 hover:bg-white/16 text-gray-300 border border-white/10'}`}>
+                {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {linkCopied ? 'Copiado!' : 'Copiar'}
+              </button>
+            </div>
+
+            <button onClick={() => setShowLinkModal(false)}
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/8 text-gray-400 text-sm font-medium transition-all">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Print Report ─────────────────────────────────────────────────────── */}
       {showReport && (
         <PrintReport
           checklist={checklist}
