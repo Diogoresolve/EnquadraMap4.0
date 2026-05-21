@@ -1,6 +1,7 @@
 {
-  "name": "app",
-  "version": "0.1.0",
+  "name": "enquadramap-40",
+  "version": "4.0.0",
+  "description": "Análise de Inserção Urbana — Portaria MCID 725/2023 — v4.0 com Neon Postgres e Vercel Blob",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +10,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
     "@react-google-maps/api": "^2.20.8",
+    "@vercel/blob": "^0.27.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
@@ -25,5 +28,8 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
