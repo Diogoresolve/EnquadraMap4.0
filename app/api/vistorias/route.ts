@@ -130,13 +130,14 @@ export async function GET(request: NextRequest) {
     // ── Produção: consulta banco com filtro opcional por chamado ───────────────
     const { sql } = await import('@/lib/db')
 
-    // Filtro por numero_chamado (busca parcial, case-insensitive)
+    // Filtro por numero_chamado ou nome (busca parcial, case-insensitive)
     const rows = filtroChamado
       ? await sql`
           SELECT id, nome, promotor, num_unidades, programa, numero_chamado,
                  endereco, latitude, longitude, criado_em, atualizado_em
           FROM vistorias
           WHERE numero_chamado ILIKE ${'%' + filtroChamado + '%'}
+             OR nome ILIKE ${'%' + filtroChamado + '%'}
           ORDER BY criado_em DESC
           LIMIT 100
         `
