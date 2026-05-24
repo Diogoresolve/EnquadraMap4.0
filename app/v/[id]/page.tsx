@@ -70,6 +70,7 @@ const REQUIREMENTS_DEFAULT: Array<{
   category: string;
   label: string;
   type: "search" | "manual";
+  maxDistanceWalk?: number;
   description: string;
 }> = [
   { id: "infra_drainage", category: "Infraestrutura", label: "Drenagem Pluvial", type: "manual", description: "Boca de lobo / Galeria pluvial existente no entorno imediato" },
