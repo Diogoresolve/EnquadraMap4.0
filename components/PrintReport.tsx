@@ -3,8 +3,9 @@
 import React from 'react';
 import { CheckItem } from '../hooks/usePortariaChecks';
 import { CheckCircle2, XCircle, Footprints, Bus, Clock, Download } from 'lucide-react';
-import { GoogleMap, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, DirectionsRenderer, Polygon } from '@react-google-maps/api';
 import { getMapIcon } from '../utils/mapIcons';
+import { RouteData } from './MapDisplay';
 
 type LatLng = { lat: number; lng: number };
 
@@ -13,10 +14,12 @@ interface PrintReportProps {
     terrainAddress: string;
     origin?: LatLng | null;
     checkLocations?: Record<string, LatLng>;
+    routes?: RouteData[];
+    polygonPath?: LatLng[];
     onClose: () => void;
 }
 
-export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations, onClose }: PrintReportProps) => {
+export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations, routes = [], polygonPath, onClose }: PrintReportProps) => {
 
     const successCount = checklist.filter(i => i.status === 'success').length;
     const failCount = checklist.filter(i => i.status === 'fail').length;
@@ -186,7 +189,7 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                 <div id="enquadramap-report" className="bg-white text-gray-900 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
 
                     {/* === CAPA DO RELATÓRIO (MAPA) === */}
-                    <div className="flex flex-col border-b-8 border-gray-100 print:border-none print:mb-0" style={{ pageBreakAfter: 'always' }}>
+                    <div className="flex flex-col border-b-8 border-gray-100 print:border-none print:mb-0" style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
                         <div className="bg-gray-50 p-5 print:bg-white print:border-b-2 print:border-black">
                             <div className="flex items-center gap-3">
                                 <input 
@@ -194,14 +197,14 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                     onChange={e => setReportTitle(e.target.value)}
                                     className="text-3xl font-bold bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none w-full text-gray-900 print:text-black print:border-none uppercase"
                                     placeholder="NOME DO TERRENO..."
-                                />
+                                  />
                             </div>
                             <p className="text-sm text-gray-500 mt-2 font-medium">{terrainAddress || 'Endereço não informado'}</p>
                             <p className="text-xs text-gray-400 mt-1">Anexo I - Mapa de Situação</p>
                         </div>
                         
                         {/* Mapa Macro com filtro P&B na impressão para economizar tinta */}
-                        <div className="w-full h-[400px] print:h-[220mm] bg-gray-100 relative print:filter print:grayscale">
+                        <div className="w-full h-[400px] print:h-[175mm] bg-gray-100 relative print:filter print:grayscale">
                             {typeof window !== 'undefined' && window.google ? (
                                 <GoogleMap
                                     mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -213,6 +216,9 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                     onLoad={(map) => {
                                         const bounds = new window.google.maps.LatLngBounds();
                                         if (origin) bounds.extend(origin);
+                                        if (polygonPath && polygonPath.length > 0) {
+                                            polygonPath.forEach(p => bounds.extend(p));
+                                        }
                                         Object.values(checkLocations || {}).forEach(loc => bounds.extend(loc));
                                         map.fitBounds(bounds, 50);
                                     }}
@@ -242,6 +248,35 @@ export const PrintReport = ({ checklist, terrainAddress, origin, checkLocations,
                                             />
                                         );
                                     })}
+
+                                    {polygonPath && (
+                                        <Polygon
+                                            paths={polygonPath}
+                                            options={{
+                                                fillColor: "#10b981",
+                                                fillOpacity: 0.25,
+                                                strokeColor: "#10b981",
+                                                strokeWeight: 2
+                                            }}
+                                        />
+                                    )}
+
+                                    {routes.map((route) => (
+                                        <DirectionsRenderer
+                                            key={route.id}
+                                            directions={route.directions}
+                                            options={{
+                                                suppressMarkers: true,
+                                                preserveViewport: true,
+                                                polylineOptions: {
+                                                    strokeColor: route.color,
+                                                    strokeWeight: 6,
+                                                    strokeOpacity: 0.85,
+                                                    zIndex: 10
+                                                }
+                                            }}
+                                        />
+                                    ))}
                                 </GoogleMap>
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Mapa indisponível</div>

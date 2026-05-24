@@ -21,7 +21,7 @@ export interface ProjetoInfo {
   numeroChamado: string;
 }
 
-export type OnboardingStep = "hero" | "projeto" | "localizacao";
+export type OnboardingStep = "hero" | "projeto" | "cidade";
 
 interface AddressResult {
   lat: number;
@@ -76,7 +76,7 @@ function BackgroundOrbs() {
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 
 function StepIndicator({ step }: { step: OnboardingStep }) {
-  const steps: OnboardingStep[] = ["hero", "projeto", "localizacao"];
+  const steps: OnboardingStep[] = ["hero", "projeto", "cidade"];
   const idx = steps.indexOf(step);
   return (
     <div className="flex items-center gap-1.5" aria-label="Progresso do cadastro">
@@ -127,12 +127,12 @@ export function OnboardingFlow({
   });
   const [projetoErrors, setProjetoErrors] = useState<{ nome?: string }>({});
 
-  const [addressInput, setAddressInput] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [addressResult, setAddressResult] = useState<AddressResult | null>(null);
-  const [addressError, setAddressError] = useState<string | null>(null);
-
-  const addressInputRef = useRef<HTMLInputElement>(null);
+  // ── Cidade state ─────────────────────────────────────────────────────────
+  const [cidadeInput, setCidadeInput]       = useState("");
+  const [isCidadeSearching, setIsCidadeSearching] = useState(false);
+  const [cidadeResult, setCidadeResult]     = useState<AddressResult | null>(null);
+  const [cidadeError, setCidadeError]       = useState<string | null>(null);
+  const cidadeInputRef = useRef<HTMLInputElement>(null);
 
   // ── Navegação entre steps ────────────────────────────────────────────────
 
@@ -142,8 +142,8 @@ export function OnboardingFlow({
   }, []);
 
   useEffect(() => {
-    if (step === "localizacao") {
-      setTimeout(() => addressInputRef.current?.focus(), 200);
+    if (step === "cidade") {
+      setTimeout(() => cidadeInputRef.current?.focus(), 200);
     }
   }, [step]);
 
@@ -156,46 +156,48 @@ export function OnboardingFlow({
       return;
     }
     setProjetoErrors({});
-    goTo("localizacao", "right");
+    goTo("cidade", "right");
   };
 
-  // ── Busca de endereço ────────────────────────────────────────────────────
+  // ── Busca de Cidade ───────────────────────────────────────────────
 
-  const searchAddress = useCallback(async () => {
-    if (!addressInput.trim()) return;
+  const searchCidade = useCallback(async () => {
+    if (!cidadeInput.trim()) return;
     if (!isMapLoaded || !window.google) {
-      setAddressError("Aguarde o mapa carregar...");
+      setCidadeError("Aguarde o mapa carregar...");
       return;
     }
-    setIsSearching(true);
-    setAddressResult(null);
-    setAddressError(null);
+    setIsCidadeSearching(true);
+    setCidadeResult(null);
+    setCidadeError(null);
 
     const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: addressInput, region: "BR" }, (results, status) => {
-      setIsSearching(false);
-      if (status === "OK" && results?.[0]) {
-        const loc = results[0].geometry.location;
-        setAddressResult({
-          lat: loc.lat(),
-          lng: loc.lng(),
-          address: results[0].formatted_address,
-        });
-      } else {
-        setAddressError("Endereço não encontrado. Tente ser mais específico.");
+    geocoder.geocode(
+      { address: cidadeInput + ", Brasil", region: "BR" },
+      (results, status) => {
+        setIsCidadeSearching(false);
+        if (status === "OK" && results && results.length > 0) {
+          const best = results[0];
+          const loc = best.geometry.location;
+          setCidadeResult({
+            lat: loc.lat(),
+            lng: loc.lng(),
+            address: best.formatted_address,
+          });
+        } else {
+          setCidadeError("Cidade não encontrada. Tente: Nome da Cidade – UF");
+        }
       }
-    });
-  }, [addressInput, isMapLoaded]);
+    );
+  }, [cidadeInput, isMapLoaded]);
 
-  const handleAddressKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { e.preventDefault(); searchAddress(); }
+  const handleCidadeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { e.preventDefault(); searchCidade(); }
   };
 
-  // ── Confirmar e entrar na análise ────────────────────────────────────────
-
-  const handleConfirm = () => {
-    if (!addressResult) return;
-    onComplete(projeto, { lat: addressResult.lat, lng: addressResult.lng }, addressResult.address);
+  const handleCidadeConfirm = () => {
+    if (!cidadeResult) return;
+    onComplete(projeto, { lat: cidadeResult.lat, lng: cidadeResult.lng }, "");
   };
 
   // ── Renders por step ─────────────────────────────────────────────────────
@@ -221,7 +223,7 @@ export function OnboardingFlow({
             <h1
               className="text-6xl sm:text-7xl font-black tracking-tight"
               style={{
-                background: "linear-gradient(135deg, #f1f5f9 0%, #34d399 50%, #22d3ee 100%)",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #F07D00 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -325,7 +327,7 @@ export function OnboardingFlow({
               Voltar
             </button>
             <StepIndicator step="projeto" />
-            <span className="text-xs text-gray-600">1 de 2</span>
+            <span className="text-xs text-gray-600"></span>
           </div>
 
           {/* Card */}
@@ -445,7 +447,7 @@ export function OnboardingFlow({
                 type="submit"
                 className="btn-cta w-full py-3.5 flex items-center justify-center gap-2 mt-2"
               >
-                Continuar para Localização
+                Iniciar Análise
                 <ChevronRight className="w-4 h-4" />
               </button>
             </form>
@@ -461,7 +463,7 @@ export function OnboardingFlow({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOCALIZAÇÃO
+  // CIDADE
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen px-4">
@@ -477,19 +479,20 @@ export function OnboardingFlow({
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
-          <StepIndicator step="localizacao" />
+          <StepIndicator step="cidade" />
           <span className="text-xs text-gray-600">2 de 2</span>
         </div>
 
         {/* Card */}
         <div className="glass-card glass-card-glow p-8">
-          {/* Header com nome do projeto */}
+          {/* Header */}
           <div className="flex items-start gap-3 mb-7">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center shrink-0">
-              <MapPin className="w-5 h-5 text-cyan-400" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(0,92,169,0.15)' }}>
+              <MapPin className="w-5 h-5" style={{ color: '#005CA9' }} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-white">Localização do Terreno</h2>
+              <h2 className="text-xl font-bold text-white">Qual é a cidade?</h2>
               <div className="flex items-center gap-2 mt-1">
                 <Building2 className="w-3 h-3 text-emerald-400 shrink-0" />
                 <p className="text-xs text-emerald-400 font-medium truncate">{projeto.nome}</p>
@@ -502,69 +505,69 @@ export function OnboardingFlow({
             </div>
           </div>
 
-          {/* Input de endereço */}
+          {/* Input de cidade */}
           <div className="space-y-3">
             <label className="block text-xs font-semibold text-gray-400 mb-1.5 tracking-wide uppercase">
-              Endereço Completo do Terreno
+              Cidade do Empreendimento
             </label>
             <div className="flex gap-2">
               <input
-                id="input-endereco-terreno"
-                ref={addressInputRef}
+                id="input-cidade"
+                ref={cidadeInputRef}
                 type="text"
                 className="input-premium flex-1"
-                placeholder="Rua, número, bairro, cidade – UF"
-                value={addressInput}
+                placeholder="Ex: Lençóis Paulista – SP"
+                value={cidadeInput}
                 onChange={(e) => {
-                  setAddressInput(e.target.value);
-                  setAddressResult(null);
-                  setAddressError(null);
+                  setCidadeInput(e.target.value);
+                  setCidadeResult(null);
+                  setCidadeError(null);
                 }}
-                onKeyDown={handleAddressKeyDown}
+                onKeyDown={handleCidadeKeyDown}
               />
               <button
-                id="btn-buscar-endereco"
+                id="btn-buscar-cidade"
                 type="button"
-                onClick={searchAddress}
-                disabled={isSearching || !addressInput.trim()}
+                onClick={searchCidade}
+                disabled={isCidadeSearching || !cidadeInput.trim()}
                 className="px-4 py-2 rounded-xl bg-white/8 border border-white/10 text-gray-300 hover:bg-white/14 hover:text-white disabled:opacity-40 transition-all shrink-0"
               >
-                {isSearching ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4" />
-                )}
+                {isCidadeSearching
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Search className="w-4 h-4" />
+                }
               </button>
             </div>
 
             {/* Buscando... */}
-            {isSearching && (
+            {isCidadeSearching && (
               <div className="flex items-center gap-3 px-1">
                 <RadarPulse />
-                <span className="text-sm text-gray-400">Localizando endereço...</span>
+                <span className="text-sm text-gray-400">Localizando cidade...</span>
               </div>
             )}
 
             {/* Erro */}
-            {addressError && (
-              <div className="flex items-center gap-2 text-sm text-red-400 px-1">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {addressError}
+            {cidadeError && (
+              <div className="flex items-start gap-2 text-sm text-red-400 px-1">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{cidadeError}</span>
               </div>
             )}
 
             {/* Resultado confirmado */}
-            {addressResult && (
-              <div className="animate-fade-up rounded-xl bg-emerald-500/8 border border-emerald-500/25 p-4">
+            {cidadeResult && (
+              <div className="animate-fade-up rounded-xl border p-4"
+                style={{ background: 'rgba(0,92,169,0.08)', borderColor: 'rgba(0,92,169,0.25)' }}>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#005CA9' }} />
                   <div className="flex-1">
-                    <p className="text-xs font-semibold text-emerald-400 mb-0.5 uppercase tracking-wide">
-                      Terreno localizado
+                    <p className="text-xs font-semibold mb-0.5 uppercase tracking-wide" style={{ color: '#005CA9' }}>
+                      Cidade localizada
                     </p>
-                    <p className="text-sm text-gray-200 leading-snug">{addressResult.address}</p>
+                    <p className="text-sm text-gray-200 leading-snug">{cidadeResult.address}</p>
                     <p className="text-[10px] text-gray-500 mt-1">
-                      {addressResult.lat.toFixed(6)}, {addressResult.lng.toFixed(6)}
+                      {cidadeResult.lat.toFixed(5)}, {cidadeResult.lng.toFixed(5)}
                     </p>
                   </div>
                 </div>
@@ -572,22 +575,26 @@ export function OnboardingFlow({
             )}
           </div>
 
-          {/* Botão confirmar */}
+          {/* Botão ir para o mapa */}
           <button
-            id="btn-iniciar-analise"
-            onClick={handleConfirm}
-            disabled={!addressResult}
+            id="btn-ir-para-mapa"
+            onClick={handleCidadeConfirm}
+            disabled={!cidadeResult}
             className="btn-cta w-full py-4 mt-6 flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed disabled:transform-none"
           >
-            <Sparkles className="w-5 h-5" />
-            Iniciar Análise
+            <MapPin className="w-5 h-5" />
+            Ir para o Mapa
             <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Hint */}
-          {!addressResult && (
+          {!cidadeResult && (
             <p className="text-center text-xs text-gray-600 mt-3">
-              Digite o endereço e pressione Enter ou clique em 🔍
+              Digite o nome da cidade e pressione Enter ou clique em 🔍
+            </p>
+          )}
+          {cidadeResult && (
+            <p className="text-center text-xs text-gray-600 mt-3">
+              No mapa, clique para marcar o terreno e depois desenhe o polígono.
             </p>
           )}
         </div>
@@ -595,13 +602,10 @@ export function OnboardingFlow({
         {/* Info cards */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           {[
-            { icon: "🗺️", text: "Polígono do terreno desenhável no mapa" },
+            { icon: "📍", text: "Clique no mapa para marcar o terreno" },
             { icon: "📐", text: "13 critérios da Portaria 725/2023" },
           ].map((item) => (
-            <div
-              key={item.text}
-              className="glass-card p-3 flex items-center gap-2.5"
-            >
+            <div key={item.text} className="glass-card p-3 flex items-center gap-2.5">
               <span className="text-lg">{item.icon}</span>
               <p className="text-xs text-gray-500 leading-snug">{item.text}</p>
             </div>

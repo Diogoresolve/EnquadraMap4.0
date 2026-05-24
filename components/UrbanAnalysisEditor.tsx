@@ -35,7 +35,7 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
   });
 
   const { geocodeAddress, getRoute } = useGoogleMapsLogic(isLoaded);
-  const { checklist, updateCheckResult, updateManualStatus, resetChecklist, loadChecklist } = usePortariaChecks();
+  const { checklist, updateCheckResult, updateManualStatus, resetChecklist, resetItem, loadChecklist } = usePortariaChecks();
 
   // ── Onboarding / Editor Phase state ────────────────────────────────────────
   const [appPhase, setAppPhase] = useState<'onboarding' | 'editor'>(props.initialAppPhase || 'onboarding');
@@ -44,10 +44,12 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
   });
 
   // ── Terrain / Origin state ──────────────────────────────────────────────────
-  const [origin, setOrigin] = useState<LatLng | null>(props.initialOrigin || null);
+  const [origin, setOrigin]               = useState<LatLng | null>(props.initialOrigin || null);
   const [originAddress, setOriginAddress] = useState<string>(props.initialOriginAddress || '');
-  const [polygonPath, setPolygonPath] = useState<LatLng[] | undefined>(props.initialPolygonPath);
+  const [mapCenter, setMapCenter]         = useState<LatLng>(props.initialOrigin || { lat: -14.235, lng: -51.925 });
+  const [polygonPath, setPolygonPath]     = useState<LatLng[] | undefined>(props.initialPolygonPath);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [isRemarkingTerrain, setIsRemarkingTerrain] = useState(false);
 
   // ── Routes / Check state ────────────────────────────────────────────────────
   const [routes, setRoutes] = useState<RouteData[]>([]);
@@ -90,12 +92,14 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
   // ─── Onboarding complete → enter editor ──────────────────────────────────
   const handleOnboardingComplete = useCallback((
     projeto: ProjetoInfo,
-    loc: LatLng,
-    address: string
+    cityLoc: LatLng,
+    _address: string
   ) => {
     setProjetoInfo(projeto);
-    setOrigin(loc);
-    setOriginAddress(address);
+    // Centra o mapa na cidade — origin fica null até o usuário clicar no mapa
+    setMapCenter(cityLoc);
+    setOrigin(null);
+    setOriginAddress('');
     setAppPhase('editor');
   }, []);
 
@@ -169,12 +173,15 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
     return polygonCenter;
   }, [polygonPath, polygonCenter]);
 
+  // Cores institucionais Caixa Econômica Federal
+  // Azul: #005CA9  |  Laranja: #F07D00
   const getCheckColor = (item: CheckItem, result: { distanceValue: number; durationValue: number }, mode: 'WALKING' | 'TRANSIT') => {
     let isValid = false;
     if (mode === 'WALKING' && item.maxDistanceWalk && result.distanceValue <= item.maxDistanceWalk) isValid = true;
     if (mode === 'TRANSIT' && item.maxTimeTransport && (result.durationValue / 60) <= item.maxTimeTransport) isValid = true;
-    if (!isValid) return "#ef4444";
-    return item.category === 'Infraestrutura' ? "#0ea5e9" : "#10b981";
+    if (!isValid) return "#F07D00"; // Laranja Caixa → reprovado
+    // Distingue as rotas aprovadas: Azul Caixa (#005CA9) para Infraestrutura e Verde Esmeralda (#10b981) para Equipamentos/Comércio/Saúde/Educação
+    return item.category === 'Infraestrutura' ? "#005CA9" : "#10b981";
   };
 
   const computeCheckRoute = useCallback(async (checkItem: CheckItem, targetLocation: LatLng, targetAddress: string) => {
@@ -228,35 +235,86 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
     }
   }, [appPhase, isLoaded, checkLocations]);
 
-  // ─── Places Nearby Search ────────────────────────────────────────────────
+  // ─── Places Nearby Search ─────────────────────────────────────────────────
+  // Dispara buscas paralelas para cada termo em searchKeywords (ou searchKeyword)
+  // Consolida resultados sem duplicatas (por place_id) e ordena por distância real
   const searchNearbyPlaces = useCallback(async (checkItem: CheckItem) => {
     if (!polygonCenter || !isLoaded || !window.google) return;
-    if (!checkItem.searchKeyword) return;
+    const terms = checkItem.searchKeywords?.length
+      ? checkItem.searchKeywords
+      : checkItem.searchKeyword
+        ? [checkItem.searchKeyword]
+        : [];
+    if (terms.length === 0) return;
+
     setIsSearching(true);
     setSuggestions([]);
+
     const service = new window.google.maps.places.PlacesService(document.createElement('div'));
-    const request: google.maps.places.PlaceSearchRequest = {
-      location: polygonCenter,
-      keyword: checkItem.searchKeyword,
-      rankBy: window.google.maps.places.RankBy.DISTANCE,
-    };
-    const searchTimeout = setTimeout(() => setIsSearching(false), 10_000);
-    service.nearbySearch(request, (results, status) => {
-      clearTimeout(searchTimeout);
-      setIsSearching(false);
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-        const topResults: PlaceSuggestion[] = results
-          .filter(p => p.geometry?.location != null)
-          .slice(0, 4)
-          .map(p => ({
-            name: p.name || 'Local',
-            address: p.formatted_address || p.vicinity || '',
-            location: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() },
-          }));
-        setSuggestions(topResults);
+    const origin = polygonCenter;
+
+    // Helper: wrap nearbySearch in a Promise
+    const searchTerm = (keyword: string): Promise<google.maps.places.PlaceResult[]> =>
+      new Promise(resolve => {
+        service.nearbySearch(
+          {
+            location: origin,
+            keyword,
+            rankBy: window.google.maps.places.RankBy.DISTANCE,
+          },
+          (results, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+              resolve(results);
+            } else {
+              resolve([]);
+            }
+          }
+        );
+      });
+
+    try {
+      // Fire all keyword searches in parallel
+      const allResultArrays = await Promise.all(terms.map(searchTerm));
+
+      // Flatten and deduplicate by place_id
+      const seen = new Set<string>();
+      const combined: google.maps.places.PlaceResult[] = [];
+      for (const arr of allResultArrays) {
+        for (const place of arr) {
+          const key = place.place_id || `${place.geometry?.location?.lat()},${place.geometry?.location?.lng()}`;
+          if (!seen.has(key) && place.geometry?.location) {
+            seen.add(key);
+            combined.push(place);
+          }
+        }
       }
-    });
-  }, [origin, isLoaded, polygonPath, getOriginForCheck]);
+
+      // Sort by straight-line distance from terrain center
+      const originLatLng = new window.google.maps.LatLng(origin);
+      combined.sort((a, b) => {
+        const da = window.google.maps.geometry.spherical.computeDistanceBetween(
+          originLatLng, a.geometry!.location!
+        );
+        const db = window.google.maps.geometry.spherical.computeDistanceBetween(
+          originLatLng, b.geometry!.location!
+        );
+        return da - db;
+      });
+
+      // Take top 6 after dedup + sort
+      const topResults: PlaceSuggestion[] = combined
+        .slice(0, 6)
+        .map(p => ({
+          name: p.name || 'Local',
+          address: p.formatted_address || p.vicinity || '',
+          location: { lat: p.geometry!.location!.lat(), lng: p.geometry!.location!.lng() },
+        }));
+
+      setSuggestions(topResults);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [polygonCenter, isLoaded, polygonPath, getOriginForCheck]);
 
   const handleItemSelect = useCallback((id: string) => {
     setActiveCheckId(id);
@@ -266,6 +324,20 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
     const item = checklist.find(i => i.id === id);
     if (item) searchNearbyPlaces(item);
   }, [checklist, searchNearbyPlaces]);
+
+  // ─── Clear Item ──────────────────────────────────────────────────
+  // Reseta um item para 'pending', remove a rota do mapa e a checkLocation salva
+  const handleClearItem = useCallback((id: string) => {
+    resetItem(id);
+    setRoutes(prev => prev.filter(r => r.id !== `check-${id}`));
+    setCheckLocations(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setActiveCheckId(prev => (prev === id ? null : prev));
+    setActiveRouteId(prev => (prev === `check-${id}` ? null : prev));
+  }, [resetItem]);
 
   // ─── Manual Text Search ──────────────────────────────────────────────────
   const handleTextSubmit = async (e?: React.FormEvent) => {
@@ -292,28 +364,68 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
   // ─── Map Click Handlers ──────────────────────────────────────────────────
   const handleMapClick = async (lat: number, lng: number) => {
     if (!window.google) return;
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      const address = (status === 'OK' && results?.[0]) ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      setPendingLocation({ lat, lng, address });
-    });
+    // Modo de remarcar terreno ou terreno ainda não definido
+    if (isRemarkingTerrain || !origin) {
+      if (activeCheckId && origin && !isRemarkingTerrain) {
+        // Selecionar local para o item ativo — deixa o fluxo normal
+      } else {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          const address = (status === 'OK' && results?.[0]) ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setPendingLocation({ lat, lng, address });
+        });
+        return;
+      }
+    }
+    // Clique normal — geocode para item ativo
+    if (activeCheckId && origin) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        const address = (status === 'OK' && results?.[0]) ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        setPendingLocation({ lat, lng, address });
+      });
+    }
   };
 
   const confirmLocation = async (andDraw = false) => {
     if (!pendingLocation) return;
     const { lat, lng, address } = pendingLocation;
-    if (activeCheckId && origin) {
+    if (isRemarkingTerrain) {
+      // Remarcar centro do terreno
+      setOrigin({ lat, lng });
+      setOriginAddress(address);
+      setIsRemarkingTerrain(false);
+      setPendingLocation(null);
+      return;
+    }
+    if (activeCheckId && origin && !isRemarkingTerrain) {
       const checkItem = checklist.find(i => i.id === activeCheckId);
       if (checkItem) await computeCheckRoute(checkItem, { lat, lng }, address);
     } else {
       setOrigin({ lat, lng });
       setOriginAddress(address);
-      if (andDraw) setIsDrawingMode(true);
-      setRoutes([]);
-      setCheckLocations({});
-      resetChecklist();
+      // Polígono automático na primeira definição do terreno
+      setIsDrawingMode(andDraw || !polygonPath);
+      if (!polygonPath) {
+        setRoutes([]);
+        setCheckLocations({});
+        resetChecklist();
+      }
     }
     setPendingLocation(null);
+  };
+
+  const handleRemarkTerrain = () => {
+    setIsRemarkingTerrain(true);
+    setActiveCheckId(null);
+    setIsDrawingMode(false);
+    setSuggestions([]);
+  };
+
+  const handleTogglePolygon = () => {
+    setIsDrawingMode(prev => !prev);
+    setIsRemarkingTerrain(false);
+    setActiveCheckId(null);
   };
 
   // ─── Selection click / Polygon draw / reset ──────────────────────────────
@@ -517,6 +629,7 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
       {/* Map display */}
       <div className="relative flex-1 w-full h-full">
         <MapDisplay
+          center={mapCenter}
           origin={origin}
           target={null}
           routes={routes}
@@ -639,12 +752,19 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
         {/* Checklist Sidebar */}
         {origin && (
           <div className="absolute top-20 right-0 h-[calc(100vh-80px)] pointer-events-auto">
-            <AnalysisSidebar
+          <AnalysisSidebar
               checklist={checklist}
               activeItemId={activeCheckId}
               onItemSelect={handleItemSelect}
               onManualUpdate={updateManualStatus}
+              onClearItem={handleClearItem}
               isProcessing={isSearching}
+              originAddress={originAddress}
+              polygonPath={polygonPath}
+              isDrawingMode={isDrawingMode}
+              isRemarkingTerrain={isRemarkingTerrain}
+              onRemarkTerrain={handleRemarkTerrain}
+              onTogglePolygon={handleTogglePolygon}
             />
           </div>
         )}
@@ -712,6 +832,8 @@ export function UrbanAnalysisEditor(props: UrbanAnalysisEditorProps) {
           terrainAddress={originAddress}
           origin={origin}
           checkLocations={checkLocations}
+          routes={routes}
+          polygonPath={polygonPath}
           onClose={() => setShowReport(false)}
         />
       )}

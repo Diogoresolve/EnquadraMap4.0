@@ -12,7 +12,9 @@ export interface Requirement {
     maxDistanceWalk?: number;   // meters
     maxTimeTransport?: number;  // minutes
     description: string;
-    searchKeyword?: string;     // Keyword for Google Places auto-search
+    searchKeyword?: string;     // Primary keyword (legacy compat)
+    /** Lista de termos de busca alternativos — cobre nomenclaturas brasileiras */
+    searchKeywords?: string[];  // Multi-term search for Brazilian naming conventions
     abbrev: string;             // Short 3-letter code for the map pin label
 }
 
@@ -67,7 +69,8 @@ const REQUIREMENTS: Requirement[] = [
         label: 'Pavimentação',
         type: 'manual',
         measurementPoint: 'edge',
-        description: 'Via pavimentada no entorno imediato do terreno',
+        maxDistanceWalk: 500,
+        description: 'Via pavimentada no entorno imediato — marque o ponto na via',
         abbrev: 'PAV'
     },
     {
@@ -76,7 +79,8 @@ const REQUIREMENTS: Requirement[] = [
         label: 'Iluminação Pública',
         type: 'manual',
         measurementPoint: 'edge',
-        description: 'Iluminação pública no entorno imediato do terreno',
+        maxDistanceWalk: 500,
+        description: 'Ponto de iluminação pública no entorno imediato — marque o ponto na rede',
         abbrev: 'ILU'
     },
 
@@ -90,7 +94,10 @@ const REQUIREMENTS: Requirement[] = [
         maxDistanceWalk: 1000,
         maxTimeTransport: 15,
         description: 'Creche ou Pré-escola pública (0-5 anos)',
-        searchKeyword: 'creche pré-escola',
+        searchKeyword: 'creche',
+        // Nomenclaturas brasileiras: EMEI = Escola Municipal de Ensino Infantil,
+        // CMEI = Centro Municipal de Educação Infantil, CEI = Centro de Educação Infantil
+        searchKeywords: ['creche', 'EMEI', 'CMEI', 'CEI', 'escola infantil', 'educação infantil', 'pré-escola'],
         abbrev: 'CRE'
     },
     {
@@ -103,6 +110,8 @@ const REQUIREMENTS: Requirement[] = [
         maxTimeTransport: 15,
         description: 'Escola Ens. Fundamental I pública',
         searchKeyword: 'escola ensino fundamental',
+        // EMEF = Escola Municipal de Ensino Fundamental, EE = Escola Estadual, EM = Escola Municipal
+        searchKeywords: ['EMEF', 'escola municipal', 'escola estadual', 'ensino fundamental', 'escola pública'],
         abbrev: 'EF1'
     },
     {
@@ -115,6 +124,7 @@ const REQUIREMENTS: Requirement[] = [
         maxTimeTransport: 15,
         description: 'Escola Ens. Fundamental II pública',
         searchKeyword: 'escola ensino fundamental',
+        searchKeywords: ['EMEF', 'escola municipal', 'escola estadual', 'ensino fundamental', 'escola pública'],
         abbrev: 'EF2'
     },
 
@@ -128,7 +138,9 @@ const REQUIREMENTS: Requirement[] = [
         maxDistanceWalk: 1000,
         maxTimeTransport: 15,
         description: 'Unidade Básica de Saúde ou UPA / ESF',
-        searchKeyword: 'unidade básica de saúde UBS',
+        searchKeyword: 'UBS',
+        // UBS, UPA, UBDS, AME, ESF = Estratégia Saúde da Família, posto de saúde
+        searchKeywords: ['UBS', 'UPA', 'posto de saúde', 'unidade de saúde', 'ESF', 'UBDS', 'AME', 'saúde da família'],
         abbrev: 'UBS'
     },
 
@@ -142,7 +154,8 @@ const REQUIREMENTS: Requirement[] = [
         maxDistanceWalk: 2000,  // 2km conforme Portaria 725
         maxTimeTransport: 25,   // 25 min transporte conforme Portaria 725
         description: 'Centro de Referência de Assistência Social',
-        searchKeyword: 'CRAS assistência social',
+        searchKeyword: 'CRAS',
+        searchKeywords: ['CRAS', 'assistência social', 'CREAS', 'centro de referência'],
         abbrev: 'CRA'
     },
 
@@ -155,7 +168,8 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 1000,  // 1km conforme Portaria 725
         description: 'Padaria, farmácia, mercadinho ou mercearia',
-        searchKeyword: 'padaria farmácia mercado supermercado',
+        searchKeyword: 'padaria farmácia mercado',
+        searchKeywords: ['padaria', 'farmácia', 'mercado', 'mercearia', 'minimercado'],
         abbrev: 'DIA'
     },
     {
@@ -167,7 +181,8 @@ const REQUIREMENTS: Requirement[] = [
         maxDistanceWalk: 1500,  // 1,5km conforme Portaria 725
         maxTimeTransport: 20,   // 20 min transporte conforme Portaria 725
         description: 'Supermercado, banco, lotérica ou correios',
-        searchKeyword: 'supermercado banco correios lotérica',
+        searchKeyword: 'supermercado banco',
+        searchKeywords: ['supermercado', 'banco', 'correios', 'lotérica', 'agência bancária'],
         abbrev: 'EVE'
     },
 
@@ -180,7 +195,8 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 1000,  // 1km conforme Portaria 725
         description: 'Ponto de embarque/desembarque de transporte coletivo',
-        searchKeyword: 'ponto de ônibus parada ônibus terminal',
+        searchKeyword: 'ponto de ônibus',
+        searchKeywords: ['ponto de ônibus', 'parada de ônibus', 'terminal', 'estação de ônibus'],
         abbrev: 'ONI'
     },
 ];
@@ -268,5 +284,12 @@ export const usePortariaChecks = () => {
         localStorage.setItem('enquadramap_checklist', JSON.stringify(loadedChecklist));
     };
 
-    return { checklist, updateCheckResult, updateManualStatus, resetChecklist, loadChecklist };
+    const resetItem = (id: string) => {
+        setChecklist(prev => prev.map(item => {
+            if (item.id !== id) return item;
+            return { ...item, status: 'pending' as CheckStatus, currentDistance: undefined, currentDuration: undefined, address: undefined, modeUsed: undefined };
+        }));
+    };
+
+    return { checklist, updateCheckResult, updateManualStatus, resetChecklist, resetItem, loadChecklist };
 };

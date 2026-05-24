@@ -18,6 +18,7 @@ export interface RouteData {
 }
 
 interface MapDisplayProps {
+    center?: LatLng;
     origin: LatLng | null;
     target: LatLng | null;
     routes: RouteData[];
@@ -35,12 +36,24 @@ const defaultCenter = { lat: -23.5505, lng: -46.6333 };
 const fmtDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
 export const MapDisplay = ({
+    center: propCenter,
     origin, target, routes, activeRouteId,
     polygonPath, isDrawingMode, onMapClick, onRouteClick, onPolygonComplete
 }: MapDisplayProps) => {
-    const center = useMemo(() => origin || defaultCenter, [origin]);
+    const center = useMemo(() => origin || propCenter || defaultCenter, [origin, propCenter]);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [isSatellite, setIsSatellite] = useState(false);
+
+    useEffect(() => {
+        if (!map) return;
+        if (origin) {
+            map.panTo(origin);
+            map.setZoom(17);
+        } else if (propCenter) {
+            map.panTo(propCenter);
+            map.setZoom(14);
+        }
+    }, [map, origin, propCenter]);
 
     const [searchText, setSearchText] = useState('');
     const [isSearchingNearby, setIsSearchingNearby] = useState(false);
@@ -176,7 +189,7 @@ export const MapDisplay = ({
                                     zIndex={isActive ? 900 : (100 + index)}
                                     onClick={() => onRouteClick && onRouteClick(route.id)}
                                     icon={{
-                                        url: getMapIcon({ status: route.color === '#ef4444' ? 'fail' : 'success', label: route.abbrev }),
+                                        url: getMapIcon({ status: (route.color === '#F07D00' || route.color === '#ef4444') ? 'fail' : 'success', label: route.abbrev }),
                                         scaledSize: new window.google.maps.Size(40, 48),
                                         anchor: new window.google.maps.Point(20, 48)
                                     }}
@@ -209,7 +222,7 @@ export const MapDisplay = ({
                                 icon={{
                                     path: google.maps.SymbolPath.CIRCLE,
                                     scale: isActive ? 18 : 14,
-                                    fillColor: "#7c3aed",
+                                    fillColor: "#005CA9",
                                     fillOpacity: 1,
                                     strokeColor: "#ffffff",
                                     strokeWeight: isActive ? 4 : 2,
@@ -281,7 +294,7 @@ export const MapDisplay = ({
                     />
                     {searchText && (
                         <button onClick={searchNearby} style={{
-                            padding: '0 10px', background: 'rgba(124,58,237,0.8)', border: 'none',
+                            padding: '0 10px', background: 'rgba(0,92,169,0.85)', border: 'none',
                             cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 700,
                             fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
                             height: '100%', flexShrink: 0, letterSpacing: '0.04em',
@@ -324,17 +337,17 @@ export const MapDisplay = ({
                                         if (result.geometry?.location && map) map.panTo(result.geometry.location);
                                     }}
                                     style={{
-                                        width: '100%', textAlign: 'left', background: isActive ? 'rgba(124,58,237,0.18)' : 'transparent',
+                                        width: '100%', textAlign: 'left', background: isActive ? 'rgba(0,92,169,0.18)' : 'transparent',
                                         border: 'none', borderTop: '1px solid rgba(255,255,255,0.05)',
                                         padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
                                         transition: 'background 0.15s',
                                     }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,58,237,0.12)')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = isActive ? 'rgba(124,58,237,0.18)' : 'transparent')}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,92,169,0.12)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = isActive ? 'rgba(0,92,169,0.18)' : 'transparent')}
                                 >
                                     <span style={{
                                         width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                                        background: '#7c3aed', color: '#fff', fontSize: 11, fontWeight: 700,
+                                        background: '#005CA9', color: '#fff', fontSize: 11, fontWeight: 700,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     }}>{i + 1}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -347,7 +360,7 @@ export const MapDisplay = ({
                                     </div>
                                     <div style={{ flexShrink: 0, textAlign: 'right' }}>
                                         {dist !== null && (
-                                            <p style={{ margin: 0, fontSize: 11, color: '#a78bfa', fontWeight: 700 }}>{fmtDist(dist)}</p>
+                                            <p style={{ margin: 0, fontSize: 11, color: '#F07D00', fontWeight: 700 }}>{fmtDist(dist)}</p>
                                         )}
                                         {result.rating && (
                                             <p style={{ margin: '2px 0 0', fontSize: 10, color: '#fbbf24' }}>
