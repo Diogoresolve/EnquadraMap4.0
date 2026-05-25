@@ -45,3 +45,6 @@ next-env.d.ts
 
 # scripts de migration locais (gerados)
 /scripts/*.js.map
+
+.vercel
+.env*

@@ -4,7 +4,7 @@ import React, { useState, useEffect, use, useRef } from "react";
 import {
   Camera, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowLeft,
   MapPin, Check, Save, User, Building, Landmark, Image as ImageIcon,
-  Compass, ChevronDown, ChevronUp, FileText, Smartphone, Calendar
+  Compass, ChevronDown, ChevronUp, FileText, Smartphone, Calendar, Download
 } from "lucide-react";
 import Link from "next/link";
 
@@ -192,6 +192,26 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
       alert(err instanceof Error ? err.message : "Erro ao enviar foto");
     } finally {
       setUploadingItem(null);
+    }
+  };
+
+  // Helper to force photo download in mobile and desktop browsers (saving to gallery)
+  const handleDownloadPhoto = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const localUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = localUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(localUrl);
+    } catch (err) {
+      console.error("Erro ao baixar foto:", err);
+      // Fallback: open in new tab
+      window.open(url, "_blank");
     }
   };
 
@@ -469,12 +489,21 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
                       {itemFotos.length > 0 && (
                         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                           {itemFotos.map((foto) => (
-                            <div key={foto.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-gray-800">
+                            <div key={foto.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-gray-800 group/photo">
                               <img
                                 src={foto.blob_url}
                                 alt="Foto vistoria"
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover animate-fade-in"
                               />
+                              {/* Download overlay button (Save to phone gallery) */}
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPhoto(foto.blob_url, `vistoria-${id}-${item.id}.jpg`)}
+                                className="absolute bottom-1 right-1 p-1 bg-black/75 hover:bg-black rounded-lg text-emerald-400 border border-white/10 shadow-md transition-all active:scale-95 flex items-center justify-center"
+                                title="Salvar na galeria do celular"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           ))}
                         </div>
