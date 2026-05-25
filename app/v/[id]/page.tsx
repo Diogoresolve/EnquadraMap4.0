@@ -162,16 +162,83 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
     );
   };
 
+  // Helper to compress images client-side before uploading (prevents Vercel 4.5MB payload limit)
+  const compressImage = (file: File, maxW = 1200, maxH = 1200, quality = 0.85): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        return resolve(file); // Don't compress non-images
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxW) {
+              height = Math.round((height * maxW) / width);
+              width = maxW;
+            }
+          } else {
+            if (height > maxH) {
+              width = Math.round((width * maxH) / height);
+              height = maxH;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve(file);
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   // Photo Upload Handler (capture="environment")
   const handlePhotoUpload = async (itemId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const rawFile = event.target.files?.[0];
+    if (!rawFile) return;
 
     setUploadingItem(itemId);
 
     try {
+      // Compress the image before uploading
+      const compressedBlob = await compressImage(rawFile).catch((err) => {
+        console.error("Compression failed, using raw file:", err);
+        return rawFile;
+      });
+
+      const fileToUpload = new File([compressedBlob], rawFile.name, {
+        type: "image/jpeg",
+        lastModified: Date.now()
+      });
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileToUpload);
       formData.append("item_id", itemId);
 
       const res = await fetch(`/api/vistorias/${id}/fotos`, {
@@ -180,7 +247,8 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
       });
 
       if (!res.ok) {
-        throw new Error("Falha no upload da foto.");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Falha no upload da foto.");
       }
 
       const newFoto: VistoriaFoto = await res.json();
