@@ -283,6 +283,26 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
     }
   };
 
+  // Helper to generate a clean, structured filename for compliance archiving
+  const getPhotoDownloadName = (item: CheckItem, fotoId: string) => {
+    const cleanStr = (s: string) => {
+      return s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "_")
+        .replace(/__+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    };
+
+    const abbrev = item.abbrev || item.id.substring(0, 3).toUpperCase();
+    const itemLabel = cleanStr(item.label);
+    const projName = cleanStr(vistoria?.nome || "VISTORIA");
+    const shortId = fotoId.substring(0, 8);
+    
+    return `${abbrev}_${itemLabel}_${projName}_${shortId}.jpg`;
+  };
+
   // Save changes to Server
   const handleSave = async () => {
     if (!vistoria) return;
@@ -460,12 +480,22 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
                   </div>
 
                   <div className="flex items-center gap-2.5 shrink-0">
-                    {/* Photos Count Indicator */}
+                    {/* Tiny overlapping photo thumbnails stack */}
                     {itemFotos.length > 0 && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-                        <ImageIcon className="w-3 h-3" />
-                        {itemFotos.length}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="flex -space-x-1.5 mr-1">
+                          {itemFotos.slice(0, 3).map((foto, idx) => (
+                            <div key={foto.id} className="w-5 h-5 rounded-full border border-gray-950 overflow-hidden shrink-0 shadow-md" style={{ zIndex: 10 - idx }}>
+                              <img src={foto.blob_url} alt="Mini preview" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {itemFotos.length > 3 && (
+                            <div className="w-5 h-5 rounded-full bg-gray-800 border border-gray-950 flex items-center justify-center text-[7px] font-bold text-gray-400 z-0">
+                              +{itemFotos.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
 
                     {/* Badge status */}
@@ -566,7 +596,7 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
                               {/* Download overlay button (Save to phone gallery) */}
                               <button
                                 type="button"
-                                onClick={() => handleDownloadPhoto(foto.blob_url, `vistoria-${id}-${item.id}.jpg`)}
+                                onClick={() => handleDownloadPhoto(foto.blob_url, getPhotoDownloadName(item, foto.id))}
                                 className="absolute bottom-1 right-1 p-1 bg-black/75 hover:bg-black rounded-lg text-emerald-400 border border-white/10 shadow-md transition-all active:scale-95 flex items-center justify-center"
                                 title="Salvar na galeria do celular"
                               >
