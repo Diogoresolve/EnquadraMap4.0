@@ -76,8 +76,8 @@ export const MapDisplay = ({
     }), []);
 
     useEffect(() => {
-        if (!map || !inputRef.current || autocompleteRef.current) return;
-        autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        if (!map || !inputRef.current || autocompleteRef.current || typeof window === 'undefined' || !window.google?.maps?.places) return;
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
             componentRestrictions: { country: 'br' },
             fields: ['geometry', 'name'],
         });
@@ -94,20 +94,20 @@ export const MapDisplay = ({
     }, [map]);
 
     const searchNearby = () => {
-        if (!map || !searchText.trim()) return;
+        if (!map || !searchText.trim() || typeof window === 'undefined' || !window.google?.maps?.places) return;
         const mapCenter = map.getCenter();
         if (!mapCenter) return;
         setIsSearchingNearby(true);
         setSearchResults([]);
         setActiveResult(null);
-        const svc = new google.maps.places.PlacesService(map);
+        const svc = new window.google.maps.places.PlacesService(map);
         svc.textSearch({
             query: searchText,
             location: mapCenter,
             radius: 3000,
         }, (results, status) => {
             setIsSearchingNearby(false);
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
                 setSearchResults(results.slice(0, 10));
             }
         });
@@ -156,11 +156,11 @@ export const MapDisplay = ({
                 {calcOriginPosition && (
                     <Marker position={calcOriginPosition}
                         zIndex={999}
-                        icon={{
+                        icon={typeof window !== 'undefined' && window.google?.maps ? {
                             url: getMapIcon({ status: 'terrain', label: 'TER' }),
                             scaledSize: new window.google.maps.Size(40, 48),
                             anchor: new window.google.maps.Point(20, 48)
-                        }}
+                        } : getMapIcon({ status: 'terrain', label: 'TER' })}
                     />
                 )}
 
@@ -176,7 +176,7 @@ export const MapDisplay = ({
                         drawingControl: false,
                         polygonOptions: { fillColor: "#10b981", fillOpacity: 0.3, strokeWeight: 2, clickable: false, editable: true, zIndex: 1 },
                     }}
-                    drawingMode={isDrawingMode ? google.maps.drawing.OverlayType.POLYGON : null}
+                    drawingMode={isDrawingMode && typeof window !== 'undefined' && window.google?.maps?.drawing ? window.google.maps.drawing.OverlayType.POLYGON : null}
                 />
 
                 {routes.map((route, index) => {
@@ -188,11 +188,11 @@ export const MapDisplay = ({
                                     position={route.directions.routes[0].legs[0].end_location}
                                     zIndex={isActive ? 900 : (100 + index)}
                                     onClick={() => onRouteClick && onRouteClick(route.id)}
-                                    icon={{
+                                    icon={typeof window !== 'undefined' && window.google?.maps ? {
                                         url: getMapIcon({ status: (route.color === '#F07D00' || route.color === '#ef4444') ? 'fail' : 'success', label: route.abbrev }),
                                         scaledSize: new window.google.maps.Size(40, 48),
                                         anchor: new window.google.maps.Point(20, 48)
-                                    }}
+                                    } : getMapIcon({ status: (route.color === '#F07D00' || route.color === '#ef4444') ? 'fail' : 'success', label: route.abbrev })}
                                 />
                             )}
                             <DirectionsRenderer
@@ -212,6 +212,7 @@ export const MapDisplay = ({
                 {searchResults.map((result, i) => {
                     if (!result.geometry?.location) return null;
                     const isActive = activeResult === i;
+                    const circlePath = typeof window !== 'undefined' && window.google?.maps ? window.google.maps.SymbolPath.CIRCLE : undefined;
                     return (
                         <React.Fragment key={`sr-${i}`}>
                             <Marker
@@ -219,14 +220,14 @@ export const MapDisplay = ({
                                 zIndex={isActive ? 800 : 200 + i}
                                 onClick={() => setActiveResult(isActive ? null : i)}
                                 label={{ text: String(i + 1), color: "white", fontWeight: "bold", fontSize: "11px" }}
-                                icon={{
-                                    path: google.maps.SymbolPath.CIRCLE,
+                                icon={circlePath ? {
+                                    path: circlePath,
                                     scale: isActive ? 18 : 14,
                                     fillColor: "#005CA9",
                                     fillOpacity: 1,
                                     strokeColor: "#ffffff",
                                     strokeWeight: isActive ? 4 : 2,
-                                }}
+                                } : undefined}
                             />
                             {isActive && (
                                 <InfoWindow
@@ -240,9 +241,9 @@ export const MapDisplay = ({
                                             {result.rating && (
                                                 <span>⭐ {result.rating.toFixed(1)}{result.user_ratings_total ? ` (${result.user_ratings_total})` : ''}</span>
                                             )}
-                                            {origin && result.geometry?.location && (
-                                                <span>📍 {fmtDist(google.maps.geometry.spherical.computeDistanceBetween(
-                                                    new google.maps.LatLng(origin),
+                                            {origin && result.geometry?.location && typeof window !== 'undefined' && window.google?.maps?.geometry?.spherical && (
+                                                <span>📍 {fmtDist(window.google.maps.geometry.spherical.computeDistanceBetween(
+                                                    new window.google.maps.LatLng(origin),
                                                     result.geometry.location
                                                 ))}</span>
                                             )}
@@ -324,9 +325,9 @@ export const MapDisplay = ({
                             {searchResults.length} resultado{searchResults.length > 1 ? 's' : ''} encontrado{searchResults.length > 1 ? 's' : ''}
                         </p>
                         {searchResults.map((result, i) => {
-                            const dist = (origin && result.geometry?.location)
-                                ? google.maps.geometry.spherical.computeDistanceBetween(
-                                    new google.maps.LatLng(origin), result.geometry.location)
+                            const dist = (origin && result.geometry?.location && typeof window !== 'undefined' && window.google?.maps?.geometry?.spherical)
+                                ? window.google.maps.geometry.spherical.computeDistanceBetween(
+                                    new window.google.maps.LatLng(origin), result.geometry.location)
                                 : null;
                             const isActive = activeResult === i;
                             return (
