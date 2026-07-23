@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { GoogleMap, Marker, DirectionsRenderer, DrawingManager, Polygon, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, DirectionsRenderer, Polygon, Polyline, InfoWindow } from '@react-google-maps/api';
 import { Satellite, Map, Search, X, Star, Loader2 } from 'lucide-react';
 import { getMapIcon } from '../utils/mapIcons';
 
@@ -43,6 +43,15 @@ export const MapDisplay = ({
     const center = useMemo(() => origin || propCenter || defaultCenter, [origin, propCenter]);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [isSatellite, setIsSatellite] = useState(false);
+
+    // Custom Polygon drawing state (replaces deprecated DrawingManager)
+    const [draftPolygon, setDraftPolygon] = useState<LatLng[]>([]);
+
+    useEffect(() => {
+        if (!isDrawingMode) {
+            setDraftPolygon([]);
+        }
+    }, [isDrawingMode]);
 
     useEffect(() => {
         if (!map) return;
@@ -128,19 +137,16 @@ export const MapDisplay = ({
     };
 
     const handleMapClick = (e: google.maps.MapMouseEvent) => {
-        if (isDrawingMode) return;
+        if (isDrawingMode) {
+            if (e.latLng) {
+                setDraftPolygon(prev => [...prev, { lat: e.latLng!.lat(), lng: e.latLng!.lng() }]);
+            }
+            return;
+        }
         setActiveResult(null);
         if (e.latLng && onMapClick) {
             // @ts-ignore
             onMapClick(e.latLng.lat(), e.latLng.lng(), e.placeId);
-        }
-    };
-
-    const handlePolygonComplete = (polygon: google.maps.Polygon) => {
-        if (onPolygonComplete) {
-            const path = polygon.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
-            onPolygonComplete(path);
-            polygon.setMap(null);
         }
     };
 
@@ -170,14 +176,37 @@ export const MapDisplay = ({
                     />
                 )}
 
-                <DrawingManager
-                    onPolygonComplete={handlePolygonComplete}
-                    options={{
-                        drawingControl: false,
-                        polygonOptions: { fillColor: "#10b981", fillOpacity: 0.3, strokeWeight: 2, clickable: false, editable: true, zIndex: 1 },
-                    }}
-                    drawingMode={isDrawingMode && typeof window !== 'undefined' && window.google?.maps?.drawing ? window.google.maps.drawing.OverlayType.POLYGON : null}
-                />
+                {/* Draft Polygon Drawing */}
+                {isDrawingMode && draftPolygon.length > 0 && (
+                    <>
+                        <Polyline
+                            path={draftPolygon}
+                            options={{ strokeColor: "#eab308", strokeWeight: 3, strokeOpacity: 0.9 }}
+                        />
+                        {draftPolygon.length >= 3 && (
+                            <Polygon
+                                paths={draftPolygon}
+                                options={{ fillColor: "#eab308", fillOpacity: 0.25, strokeColor: "#eab308", strokeWeight: 2 }}
+                            />
+                        )}
+                        {draftPolygon.map((pt, idx) => (
+                            <Marker
+                                key={`draft-pt-${idx}`}
+                                position={pt}
+                                zIndex={1000}
+                                label={{ text: String(idx + 1), color: "black", fontWeight: "bold", fontSize: "10px" }}
+                                icon={typeof window !== 'undefined' && window.google?.maps ? {
+                                    path: window.google.maps.SymbolPath.CIRCLE,
+                                    scale: 7,
+                                    fillColor: "#eab308",
+                                    fillOpacity: 1,
+                                    strokeColor: "#ffffff",
+                                    strokeWeight: 2,
+                                } : undefined}
+                            />
+                        ))}
+                    </>
+                )}
 
                 {routes.map((route, index) => {
                     const isActive = route.id === activeRouteId;
@@ -392,6 +421,61 @@ export const MapDisplay = ({
             >
                 {isSatellite ? <><Map size={14} /> Mapa</> : <><Satellite size={14} /> Satélite</>}
             </button>
+
+            {/* ── Floating Polygon Drawing Toolbar ───────────────────────────────── */}
+            {isDrawingMode && (
+                <div style={{
+                    position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 30, display: 'flex', alignItems: 'center', gap: 12,
+                    background: 'rgba(10, 12, 18, 0.95)', backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(234, 179, 8, 0.4)', borderRadius: 14,
+                    padding: '8px 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#fef08a' }}>
+                            ✏️ Desenhar Terreno ({draftPolygon.length} {draftPolygon.length === 1 ? 'ponto' : 'pontos'})
+                        </span>
+                        <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                            Clique nos cantos do terreno no mapa
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {draftPolygon.length > 0 && (
+                            <button
+                                onClick={() => setDraftPolygon(prev => prev.slice(0, -1))}
+                                style={{
+                                    padding: '5px 10px', background: 'rgba(255,255,255,0.1)',
+                                    border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8,
+                                    color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                }}
+                            >
+                                ↩ Desfazer
+                            </button>
+                        )}
+
+                        {draftPolygon.length >= 3 && (
+                            <button
+                                onClick={() => {
+                                    if (onPolygonComplete) {
+                                        onPolygonComplete(draftPolygon);
+                                    }
+                                    setDraftPolygon([]);
+                                }}
+                                style={{
+                                    padding: '5px 14px', background: '#10b981',
+                                    border: 'none', borderRadius: 8,
+                                    color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                    boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)'
+                                }}
+                            >
+                                ✓ Concluir
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>

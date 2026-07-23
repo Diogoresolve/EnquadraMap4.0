@@ -11,7 +11,7 @@ import { PrintReport } from '../components/PrintReport';
 import { OnboardingFlow, ProjetoInfo } from '../components/OnboardingFlow';
 import Link from 'next/link';
 
-const LIBRARIES: ("places" | "geometry" | "drawing" | "visualization")[] = ["places", "drawing", "geometry"];
+const LIBRARIES: ("places" | "geometry" | "visualization")[] = ["places", "geometry"];
 
 type LatLng = { lat: number; lng: number };
 interface PlaceSuggestion { name: string; address: string; location: LatLng; }
