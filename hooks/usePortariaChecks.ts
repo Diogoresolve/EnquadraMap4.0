@@ -93,10 +93,8 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 1000,
         maxTimeTransport: 15,
-        description: 'Creche ou Pré-escola pública (0-5 anos)',
+        description: 'Creche ou Pré-escola pública (0-5 anos) a até 1,0 km',
         searchKeyword: 'creche',
-        // Nomenclaturas brasileiras: EMEI = Escola Municipal de Ensino Infantil,
-        // CMEI = Centro Municipal de Educação Infantil, CEI = Centro de Educação Infantil
         searchKeywords: ['creche', 'EMEI', 'CMEI', 'CEI', 'escola infantil', 'educação infantil', 'pré-escola'],
         abbrev: 'CRE'
     },
@@ -106,11 +104,10 @@ const REQUIREMENTS: Requirement[] = [
         label: 'Ens. Fund. Ciclo I (6-10 anos)',
         type: 'search',
         measurementPoint: 'center',
-        maxDistanceWalk: 1000,
-        maxTimeTransport: 15,
-        description: 'Escola Ens. Fundamental I pública',
+        maxDistanceWalk: 1500,
+        maxTimeTransport: 20,
+        description: 'Escola Ens. Fundamental I pública a até 1,5 km',
         searchKeyword: 'escola ensino fundamental',
-        // EMEF = Escola Municipal de Ensino Fundamental, EE = Escola Estadual, EM = Escola Municipal
         searchKeywords: ['EMEF', 'escola municipal', 'escola estadual', 'ensino fundamental', 'escola pública'],
         abbrev: 'EF1'
     },
@@ -120,12 +117,25 @@ const REQUIREMENTS: Requirement[] = [
         label: 'Ens. Fund. Ciclo II (11-14 anos)',
         type: 'search',
         measurementPoint: 'center',
-        maxDistanceWalk: 1000,
-        maxTimeTransport: 15,
-        description: 'Escola Ens. Fundamental II pública',
+        maxDistanceWalk: 1500,
+        maxTimeTransport: 20,
+        description: 'Escola Ens. Fundamental II pública a até 1,5 km',
         searchKeyword: 'escola ensino fundamental',
         searchKeywords: ['EMEF', 'escola municipal', 'escola estadual', 'ensino fundamental', 'escola pública'],
         abbrev: 'EF2'
+    },
+    {
+        id: 'school_medio',
+        category: 'Educação',
+        label: 'Ensino Médio (15-17 anos)',
+        type: 'search',
+        measurementPoint: 'center',
+        maxDistanceWalk: 1500,
+        maxTimeTransport: 20,
+        description: 'Escola de Ensino Médio pública a até 1,5 km',
+        searchKeyword: 'escola ensino médio',
+        searchKeywords: ['escola estadual', 'ensino médio', 'colégio estadual', 'escola pública', 'ETEC', 'IFSP', 'escola técnica'],
+        abbrev: 'MED'
     },
 
     // ─── SAÚDE ───────────────────────────────────────────────────────────────────
@@ -137,9 +147,8 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 1000,
         maxTimeTransport: 15,
-        description: 'Unidade Básica de Saúde ou UPA / ESF',
+        description: 'Unidade Básica de Saúde ou UPA / ESF a até 1,0 km',
         searchKeyword: 'UBS',
-        // UBS, UPA, UBDS, AME, ESF = Estratégia Saúde da Família, posto de saúde
         searchKeywords: ['UBS', 'UPA', 'posto de saúde', 'unidade de saúde', 'ESF', 'UBDS', 'AME', 'saúde da família'],
         abbrev: 'UBS'
     },
@@ -153,7 +162,7 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 2000,  // 2km conforme Portaria 725
         maxTimeTransport: 25,   // 25 min transporte conforme Portaria 725
-        description: 'Centro de Referência de Assistência Social',
+        description: 'Centro de Referência de Assistência Social a até 2,0 km',
         searchKeyword: 'CRAS',
         searchKeywords: ['CRAS', 'assistência social', 'CREAS', 'centro de referência'],
         abbrev: 'CRA'
@@ -167,7 +176,7 @@ const REQUIREMENTS: Requirement[] = [
         type: 'search',
         measurementPoint: 'center',
         maxDistanceWalk: 1000,  // 1km conforme Portaria 725
-        description: 'Padaria, farmácia, mercadinho ou mercearia',
+        description: 'Padaria, farmácia, mercadinho ou mercearia a até 1,0 km',
         searchKeyword: 'padaria farmácia mercado',
         searchKeywords: ['padaria', 'farmácia', 'mercado', 'mercearia', 'minimercado'],
         abbrev: 'DIA'
@@ -180,7 +189,7 @@ const REQUIREMENTS: Requirement[] = [
         measurementPoint: 'center',
         maxDistanceWalk: 1500,  // 1,5km conforme Portaria 725
         maxTimeTransport: 20,   // 20 min transporte conforme Portaria 725
-        description: 'Supermercado, banco, lotérica ou correios',
+        description: 'Supermercado, banco, lotérica ou correios a até 1,5 km',
         searchKeyword: 'supermercado banco',
         searchKeywords: ['supermercado', 'banco', 'correios', 'lotérica', 'agência bancária'],
         abbrev: 'EVE'
@@ -192,9 +201,9 @@ const REQUIREMENTS: Requirement[] = [
         category: 'Mobilidade',
         label: 'Ponto de Ônibus / Terminal',
         type: 'search',
-        measurementPoint: 'center',
-        maxDistanceWalk: 1000,  // 1km conforme Portaria 725
-        description: 'Ponto de embarque/desembarque de transporte coletivo',
+        measurementPoint: 'edge',  // Borda/perímetro do terreno conforme Portaria 725
+        maxDistanceWalk: 500,     // 500m conforme Portaria 725
+        description: 'Ponto de embarque de transporte coletivo a até 500m',
         searchKeyword: 'ponto de ônibus',
         searchKeywords: ['ponto de ônibus', 'parada de ônibus', 'terminal', 'estação de ônibus'],
         abbrev: 'ONI'

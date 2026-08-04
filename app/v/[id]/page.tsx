@@ -78,14 +78,15 @@ const REQUIREMENTS_DEFAULT: Array<{
   { id: "infra_water", category: "Infraestrutura", label: "Rede de Água", type: "manual", description: "Ponto de abastecimento / Hidrômetro próximo no entorno imediato" },
   { id: "infra_paving", category: "Infraestrutura", label: "Pavimentação", type: "manual", maxDistanceWalk: 500, description: "Via pavimentada no entorno imediato — marque o ponto na via" },
   { id: "infra_lighting", category: "Infraestrutura", label: "Iluminação Pública", type: "manual", maxDistanceWalk: 500, description: "Ponto de iluminação pública no entorno imediato — marque o ponto na rede" },
-  { id: "school_creche", category: "Educação", label: "Educação Infantil (Creche/Pré)", type: "search", description: "Creche ou Pré-escola pública (0-5 anos) a até 1km" },
-  { id: "school_fund1", category: "Educação", label: "Ens. Fund. Ciclo I (6-10 anos)", type: "search", description: "Escola Ens. Fundamental I pública a até 1km" },
-  { id: "school_fund2", category: "Educação", label: "Ens. Fund. Ciclo II (11-14 anos)", type: "search", description: "Escola Ens. Fundamental II pública a até 1km" },
-  { id: "ubs", category: "Saúde", label: "UBS / Saúde da Família", type: "search", description: "Unidade Básica de Saúde ou UPA a até 1km" },
-  { id: "cras", category: "Assistência Social", label: "CRAS", type: "search", description: "Centro de Referência de Assistência Social a até 2km" },
-  { id: "commerce_daily", category: "Comércio e Serviços", label: "Comércio Cotidiano", type: "search", description: "Padaria, farmácia, mercadinho ou mercearia a até 1km" },
+  { id: "school_creche", category: "Educação", label: "Educação Infantil (Creche/Pré)", type: "search", description: "Creche ou Pré-escola pública (0-5 anos) a até 1.0km" },
+  { id: "school_fund1", category: "Educação", label: "Ens. Fund. Ciclo I (6-10 anos)", type: "search", description: "Escola Ens. Fundamental I pública a até 1.5km" },
+  { id: "school_fund2", category: "Educação", label: "Ens. Fund. Ciclo II (11-14 anos)", type: "search", description: "Escola Ens. Fundamental II pública a até 1.5km" },
+  { id: "school_medio", category: "Educação", label: "Ensino Médio (15-17 anos)", type: "search", description: "Escola de Ensino Médio pública a até 1.5km" },
+  { id: "ubs", category: "Saúde", label: "UBS / Saúde da Família", type: "search", description: "Unidade Básica de Saúde ou UPA a até 1.0km" },
+  { id: "cras", category: "Assistência Social", label: "CRAS", type: "search", description: "Centro de Referência de Assistência Social a até 2.0km" },
+  { id: "commerce_daily", category: "Comércio e Serviços", label: "Comércio Cotidiano", type: "search", description: "Padaria, farmácia, mercadinho ou mercearia a até 1.0km" },
   { id: "commerce_occasional", category: "Comércio e Serviços", label: "Comércio Eventual", type: "search", description: "Supermercado, banco, lotérica ou correios a até 1.5km" },
-  { id: "bus_stop", category: "Mobilidade", label: "Ponto de Ônibus / Terminal", type: "search", description: "Ponto de embarque de transporte coletivo a até 1km" }
+  { id: "bus_stop", category: "Mobilidade", label: "Ponto de Ônibus / Terminal", type: "search", description: "Ponto de embarque de transporte coletivo a até 500m" }
 ];
 
 export default function VistoriaPortal({ params }: { params: Promise<{ id: string }> }) {
