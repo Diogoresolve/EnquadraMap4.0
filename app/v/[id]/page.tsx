@@ -592,7 +592,9 @@ export default function VistoriaPortal({ params }: { params: Promise<{ id: strin
                               <img
                                 src={foto.blob_url}
                                 alt="Foto vistoria"
-                                className="w-full h-full object-cover animate-fade-in"
+                                onClick={() => window.open(foto.blob_url, "_blank")}
+                                className="w-full h-full object-cover animate-fade-in cursor-pointer hover:opacity-90 transition-opacity"
+                                title="Clique para abrir imagem em tamanho real"
                               />
                               {/* Download overlay button (Save to phone gallery) */}
                               <button
