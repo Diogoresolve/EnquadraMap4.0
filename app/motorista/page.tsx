@@ -94,20 +94,20 @@ function DriverContent() {
                         {data.t && (
                             <MarkerF
                                 position={{ lat: data.t.lat, lng: data.t.lng }}
-                                icon={{
-                                    url: 'http://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
+                                icon={typeof window !== 'undefined' && window.google?.maps ? {
+                                    url: 'https://maps.google.com/mapfiles/kml/paddle/grn-stars.png',
                                     scaledSize: new window.google.maps.Size(40, 40)
-                                }}
+                                } : 'https://maps.google.com/mapfiles/kml/paddle/grn-stars.png'}
                             />
                         )}
                         {data.p.map((pt, i) => (
                             <MarkerF
                                 key={i}
                                 position={{ lat: pt.lat, lng: pt.lng }}
-                                icon={{
-                                    url: 'http://maps.google.com/mapfiles/kml/paddle/red-circle.png',
+                                icon={typeof window !== 'undefined' && window.google?.maps ? {
+                                    url: 'https://maps.google.com/mapfiles/kml/paddle/red-circle.png',
                                     scaledSize: new window.google.maps.Size(32, 32)
-                                }}
+                                } : 'https://maps.google.com/mapfiles/kml/paddle/red-circle.png'}
                                 label={{
                                     text: pt.l.substring(0, 1).toUpperCase(),
                                     color: '#000',
